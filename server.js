@@ -13,6 +13,8 @@ const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
+const User = require('./db/models/user')
+
 const setting = {
     httpAdminRoot:"/red",
     httpNodeRoot: "/",
@@ -39,7 +41,7 @@ module.exports = async function createServer () {
    * Routes for the application
    */
   app.use('/', require('./routes/mySubApp'))
-  //app.use('/api/users', require('./routes/userRoute'))
+  app.use('/', require('./routes/userRoute'))
 
   const server = http.createServer(app).listen(app.get('port'), '0.0.0.0', () => {
     console.log("Server started at http://localhost:" + app.get('port') + "/")
