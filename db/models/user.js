@@ -8,8 +8,12 @@ module.exports = (sequelize, DataTypes) => {
     role_id: DataTypes.INTEGER,
     email_verified_at: DataTypes.DATE,
     remember_token: DataTypes.STRING,
-    active: DataTypes.INTEGER
-  }, {});
+    active: DataTypes.INTEGER,
+    created_at: DataTypes.DATE,
+    updated_at: DataTypes.DATE
+  }, {
+    timestamps: false
+  });
   User.associate = function(models) {
     // associations can be defined here
   };
