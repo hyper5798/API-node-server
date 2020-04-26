@@ -34,13 +34,13 @@ module.exports = async function createServer () {
   app.use(morgan('dev'))
   app.use(bodyParser.urlencoded({ extended: false, inflate: true }))
   app.use(bodyParser.json({ strict: true, inflate: true }))
-  app.use(responsePoweredBy("@NickNaso"))
+  app.use(responsePoweredBy("@JASON_HUANG"))
   app.use(responseTime())
 
   /**
    * Routes for the application
    */
-  app.use('/', require('./routes/mySubApp'))
+  //app.use('/', require('./routes/mySubApp'))
   app.use('/', require('./routes/userRoute'))
 
   const server = http.createServer(app).listen(app.get('port'), '0.0.0.0', () => {

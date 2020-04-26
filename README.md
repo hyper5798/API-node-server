@@ -47,12 +47,16 @@ module.exports = {
 
 6. Running Migrations
    npx sequelize-cli db:migrate
+   --undo
+   npx sequelize-cli db:migrate:undo
 
 7. Creating Seed
    npx sequelize-cli seed:generate --name demo-user
 
 8. Running Seeds
    npx sequelize-cli db:seed:all
+   --undo
+   npx sequelize-cli db:seed:undo
 
 * Node-red - Embedding into an existing app
  
