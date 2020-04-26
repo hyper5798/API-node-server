@@ -10,11 +10,20 @@ const authResources = require('../lib/authResources')
 
 module.exports = {
     async index(req, res, next) {
-        try {
-          let users = await userResources.getAllUser()
+      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      
+
+      try {
+          let verify = await authResources.tokenVerify(token)
+          if(!verify || verify.cp_id == undefined){
+            res.status(401).send('Auth fail')
+            return
+          }
+          let users = await userResources.getCpUsers(verify.cp_id)
           res.status(200).json(users)
         } catch (e) {
-          next(e)
+          //next(e)
+          res.status(401).send(e.message+' ! Please re-login.')
         }
     },
 

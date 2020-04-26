@@ -1,3 +1,4 @@
 {
-    "secret": "iotsecret"
+    "secret": "iotsecret",
+    "token_expired": 24
 }
