@@ -22,7 +22,7 @@ module.exports = {
           res.status(200).json(users)
         } catch (e) {
           //next(e)
-          res.status(404).send(e.message)
+          res.status(500).send(e.message)
         }
     },
 
@@ -41,7 +41,7 @@ module.exports = {
       let dbUsers = await userResources.getUserByEmail(email)
       if(dbUsers.length == 0)
       {
-        res.status(404).send('Email not found')
+        res.status(406).send('Email not found')
         return
       }
       //Check auth
@@ -63,7 +63,7 @@ module.exports = {
       console.log(dbUser);
       res.status(200).json(dbUser)
     } catch (e) {
-      res.status(404).send(e.message)
+      res.status(500).send(e.message)
     }
   },
 
@@ -109,7 +109,7 @@ module.exports = {
       let newUser = await userResources.createUser(obj)
       res.status(200).json(newUser)
     } catch (e) {
-      res.status(404).send(e.message)
+      res.status(500).send(e.message)
     }
   },
 
@@ -129,12 +129,12 @@ module.exports = {
       } else {
         let verify = await authResources.tokenVerify(token)
         if(verify.role_id >2 && verify.id != id){
-          res.status(405).send('Not Allowed')
+          res.status(405).send('Not allowed')
           return
 
         } else if(verify.role_id == 2 && role_id == 1){
           //Admin change to super admin is not allowed
-          res.status(405).send('Not Allowed')
+          res.status(405).send('Not allowed')
           return
 
         } else if (verify.role_id == 2 && role_id > 1){
@@ -163,24 +163,45 @@ module.exports = {
         obj['password'] = myHash
       }
       
-      let result = await userResources.updateBId(id, obj)
+      await userResources.updateBId(id, obj)
       res.status(200).json('Update success')
     } catch (e) {
-      res.status(404).send(e.message)
+      res.status(500).send(e.message)
     }
   },
 
-  async deleteResource(req, res, next) {
+  async delete(req, res, next) {
     try {
-      let resource = {
-        firstName: "Dennis",
-        lastName: "Ritchie"
+      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      let id = req.params.id
+      let result = 0
+      if(typeof(id) === 'string')
+        id = parseInt(id)
+      if(token === 'undefined') {
+        res.status(403).send('No access')
+        return
+      } else {
+        let verify = await authResources.tokenVerify(token)
+        //Only administrators and super administrators have the right
+        if(verify.role_id > 2 || id == 1){
+          res.status(405).send('Not allowed')
+          return
+        }
+        
+        //Administrators can delete users from the same company
+        if(verify.role_id == 2)
+          result = await userResources.deleteById2(id, verify.cp_id)
+        else if(verify.role_id == 1)
+          //Super administrators can delete all of users
+          result = await userResources.deleteById(id)
       }
-      resource = await asyncResources.deleteAsyncResources(resource)
-      res.status(200).send(resource)
+      if(result == 0){
+        res.status(405).send('Not allowed')
+      } else {
+        res.status(200).send('Delete success')
+      }
     } catch (e) {
-      next(e)
+      res.status(500).send(e.message)
     }
   }
-
 }
