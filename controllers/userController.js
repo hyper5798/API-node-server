@@ -7,23 +7,28 @@
 const userResources = require('../lib/userResources')
 const asyncResources = require('../lib/asyncResources')
 const authResources = require('../lib/authResources')
+const resResources = require('../lib/resResources')
 
 module.exports = {
     async index(req, res, next) {
-      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
-      
       try {
-          let verify = await authResources.tokenVerify(token)
-          if(!verify || verify.cp_id == undefined){
-            res.status(405).send('Not Allowed')
-            return
-          }
-          let users = await userResources.getCpUsers(verify.cp_id)
-          res.status(200).json(users)
-        } catch (e) {
-          //next(e)
-          res.status(500).send(e.message)
+        let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+        if(token === 'undefined') {
+          //resResources will response message then stop
+          resResources.noAccess(res)
         }
+        let verify = await authResources.tokenVerify(token)
+        if(!verify || verify.cp_id == undefined){
+          //resResources will response message then stop
+          resResources.notAllowed(res)
+        }
+        let users = await userResources.getCpUsers(verify.cp_id)
+        //resResources will response result then stop
+        resResources.getDtaSuccess(res, users)
+      } catch (e) {
+        //resResources will response catch error
+        resResources.catchError(res, e.message)
+      }
     },
 
   async login(req, res, next) {
@@ -34,23 +39,23 @@ module.exports = {
       //Check input data
       if(email == undefined || password == undefined)
       {
-        res.status(400).send('Miss paramater')
-        return
+         //resResources will response message then stop
+        resResources.missPara(res)
       }
       //Check user is exist?
       let dbUsers = await userResources.getUserByEmail(email)
       if(dbUsers.length == 0)
       {
-        res.status(406).send('Email not found')
-        return
+         //resResources will response message then stop
+        resResources.notFound(res, 'Email not found')
       }
       //Check auth
       let dbUser = dbUsers[0];
       let isPass = await authResources.getCompare(password, dbUser.password)
       if(!isPass)
       {
-        res.status(401).send('Auth fail')
-        return
+         //resResources will response message then stop
+        resResources.authFail(res)
       }
       //Get Token
       if(dbUser) {
@@ -61,9 +66,11 @@ module.exports = {
           
       dbUser.remember_token = await authResources.getToken(dbUser);
       console.log(dbUser);
-      res.status(200).json(dbUser)
+       //resResources will response resulr
+      resResources.getDtaSuccess(dbUser)
     } catch (e) {
-      res.status(500).send(e.message)
+       //resResources will response catch error
+      resResources.catchError(res)
     }
   },
 
@@ -78,8 +85,8 @@ module.exports = {
       //Check input data
       if(name == undefined || email == undefined || password == undefined)
       {
-        res.status(400).send('Miss paramater')
-        return
+         //resResources will response message then stop
+        resResources.missPara(res)
       }
       let hashCode = await authResources.getHashCode(password)
       let myHash = hashCode.replace('$2b$', '$2y$');
@@ -107,27 +114,33 @@ module.exports = {
       }
       
       let newUser = await userResources.createUser(obj)
-      res.status(200).json(newUser)
+      //resResources will response message
+      resResources.doSuccess(res, 'Register success')
     } catch (e) {
-      res.status(500).send(e.message)
+      //resResources will response catch error
+      resResources.catchError(e.message)
     }
   },
 
   async show(req, res, next) { 
     try {
       let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      if(token === 'undefined') {
+        resResources.noAccess(res)
+      }
       let id = req.params.id
       let verify = await authResources.tokenVerify(token)
       //Normal users can only see themselves
       if(verify.role_id > 2 && verify.id != id){
-        res.status(405).send('Not Allowed')
-        return
+         //resResources will response message then stop
+        resResources.notAllowed(res)
       }
       let users = await userResources.getUserById(id)
-      res.status(200).json(users[0])
+      //resResources will response result
+      resResources.getDtaSuccess(users[0])
     } catch (e) {
-      //next(e)
-      res.status(500).send(e.message)
+      //resResources will response catch error
+      resResources.catchError(res)
     }
   },
 
@@ -142,19 +155,17 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       if(token === 'undefined') {
-        res.status(403).send('No access')
-        return
+        //resResources will response message then stop
+        resResources.noAccess(res)
       } else {
         let verify = await authResources.tokenVerify(token)
         if(verify.role_id >2 && verify.id != id){
-          res.status(405).send('Not allowed')
-          return
-
+          //resResources will response message then stop
+          resResources.notAllowed(res)
         } else if(verify.role_id == 2 && role_id == 1){
           //Admin change to super admin is not allowed
-          res.status(405).send('Not allowed')
-          return
-
+          //resResources will response message then stop
+          resResources.notAllowed(res)
         } else if (verify.role_id == 2 && role_id > 1){
           //For admin update name / password / role_id
           
@@ -182,9 +193,11 @@ module.exports = {
       }
       
       await userResources.updateBId(id, obj)
-      res.status(200).json('Update success')
+      //resResources will response message
+      resResources.doSuccess(res, 'Update success')
     } catch (e) {
-      res.status(500).send(e.message)
+      //resResources will response message catch error
+      resResources.catchError(e.message)
     }
   },
 
@@ -196,14 +209,14 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       if(token === 'undefined') {
-        res.status(403).send('No access')
-        return
+        //resResources will response message then stop
+        resResources.noAccess(res)
       } else {
         let verify = await authResources.tokenVerify(token)
         //Only administrators and super administrators have the right
         if(verify.role_id > 2 || id == 1){
-          res.status(405).send('Not allowed')
-          return
+          //resResources will response message then stop
+          resResources.notAllowed(res)
         }
         
         //Administrators can delete users from the same company
@@ -214,12 +227,15 @@ module.exports = {
           result = await userResources.destroyById(id)
       }
       if(result == 0){
-        res.status(405).send('Not allowed')
+        //resResources will response message
+        resResources.notAllowed(res)
       } else {
-        res.status(200).send('Delete success')
+        //resResources will response message
+        resResources.doSuccess(res, 'Delete success')
       }
     } catch (e) {
-      res.status(500).send(e.message)
+       //resResources will response catch error
+      resResources.catchError(e.message)
     }
   }
 }
