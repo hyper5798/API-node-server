@@ -29,7 +29,7 @@ const userRoute = express.Router()
 userRoute.get('/users', userController.index)
 userRoute.post('/users/login', userController.login)
 userRoute.post('/users/register', userController.register)
-//userRoute.put('/users/:id', userController.putResource)
+userRoute.put('/users/:id', userController.update)
 //userRoute.delete('/users/:id', userController.deleteResource)
 
 module.exports = userRoute

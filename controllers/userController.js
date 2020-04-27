@@ -15,14 +15,14 @@ module.exports = {
       try {
           let verify = await authResources.tokenVerify(token)
           if(!verify || verify.cp_id == undefined){
-            res.status(401).send('Auth fail')
+            res.status(405).send('Not Allowed')
             return
           }
           let users = await userResources.getCpUsers(verify.cp_id)
           res.status(200).json(users)
         } catch (e) {
           //next(e)
-          res.status(401).send(e.message+' ! Please re-login.')
+          res.status(404).send(e.message)
         }
     },
 
@@ -41,7 +41,7 @@ module.exports = {
       let dbUsers = await userResources.getUserByEmail(email)
       if(dbUsers.length == 0)
       {
-        res.status(401).send('No Account')
+        res.status(404).send('Email not found')
         return
       }
       //Check auth
@@ -63,7 +63,7 @@ module.exports = {
       console.log(dbUser);
       res.status(200).json(dbUser)
     } catch (e) {
-      next(e)
+      res.status(404).send(e.message)
     }
   },
 
@@ -109,20 +109,64 @@ module.exports = {
       let newUser = await userResources.createUser(obj)
       res.status(200).json(newUser)
     } catch (e) {
-      next(e)
+      res.status(404).send(e.message)
     }
   },
 
-  async putResource(req, res, next) {
+  async update(req, res, next) {
     try {
-      let resource = {
-        firstName: "Dennis",
-        lastName: "Ritchie"
+      //Get input data
+      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      let id = req.params.id
+      let cp_id = req.body.cpId || req.query.cpId
+      let role_id = req.body.cpId || req.query.cpId
+      let obj = {}
+      if(typeof(id) === 'string')
+        id = parseInt(id)
+      if(token === 'undefined') {
+        res.status(403).send('No access')
+        return
+      } else {
+        let verify = await authResources.tokenVerify(token)
+        if(verify.role_id >2 && verify.id != id){
+          res.status(405).send('Not Allowed')
+          return
+
+        } else if(verify.role_id == 2 && role_id == 1){
+          //Admin change to super admin is not allowed
+          res.status(405).send('Not Allowed')
+          return
+
+        } else if (verify.role_id == 2 && role_id > 1){
+          //For admin update name / password / role_id
+          
+          if(role_id != undefined)
+              obj['role_id'] = role_id
+          
+        } else if (verify.role_id == 1){//Super admin
+          if(role_id != undefined)
+              obj['role_id'] = role_id
+          if(cp_id != undefined)
+              obj['cp_id'] = cp_id
+        }
       }
-      resource = await asyncResources.updateAsyncResource(resource)
-      res.status(200).send(resource)
+      let name = req.body.name || req.query.name
+      let password = req.body.password || req.query.password
+
+      //for normal user update name / password
+      if(name != undefined)
+          obj['name'] = name
+      if(password != undefined){
+        let hashCode = await authResources.getHashCode(password)
+        //Replace to laravel hash format
+        let myHash = hashCode.replace('$2b$', '$2y$');
+        obj['password'] = myHash
+      }
+      
+      let result = await userResources.updateBId(id, obj)
+      res.status(200).json('Update success')
     } catch (e) {
-      next(e)
+      res.status(404).send(e.message)
     }
   },
 
