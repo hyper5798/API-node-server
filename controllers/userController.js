@@ -113,6 +113,24 @@ module.exports = {
     }
   },
 
+  async show(req, res, next) { 
+    try {
+      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      let id = req.params.id
+      let verify = await authResources.tokenVerify(token)
+      //Normal users can only see themselves
+      if(verify.role_id > 2 && verify.id != id){
+        res.status(405).send('Not Allowed')
+        return
+      }
+      let users = await userResources.getUserById(id)
+      res.status(200).json(users[0])
+    } catch (e) {
+      //next(e)
+      res.status(500).send(e.message)
+    }
+  },
+
   async update(req, res, next) {
     try {
       //Get input data
@@ -170,7 +188,7 @@ module.exports = {
     }
   },
 
-  async delete(req, res, next) {
+  async destroy(req, res, next) {
     try {
       let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
       let id = req.params.id
@@ -190,10 +208,10 @@ module.exports = {
         
         //Administrators can delete users from the same company
         if(verify.role_id == 2)
-          result = await userResources.deleteById2(id, verify.cp_id)
+          result = await userResources.destroyById2(id, verify.cp_id)
         else if(verify.role_id == 1)
           //Super administrators can delete all of users
-          result = await userResources.deleteById(id)
+          result = await userResources.destroyById(id)
       }
       if(result == 0){
         res.status(405).send('Not allowed')
