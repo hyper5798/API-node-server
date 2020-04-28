@@ -12,21 +12,17 @@ const resResources = require('../lib/resResources')
 module.exports = {
     async index(req, res, next) {
       try {
-        let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
-        if(token === 'undefined') {
-          //resResources will response message then stop
-          resResources.noAccess(res)
+        let token = authResources.getInputToken(req)
+        if(token === undefined) {
+          return resResources.noAccess(res)
         }
         let verify = await authResources.tokenVerify(token)
         if(!verify || verify.cp_id == undefined){
-          //resResources will response message then stop
-          resResources.notAllowed(res)
+          return resResources.notAllowed(res)
         }
         let users = await userResources.getCpUsers(verify.cp_id)
-        //resResources will response result then stop
         resResources.getDtaSuccess(res, users)
       } catch (e) {
-        //resResources will response catch error
         resResources.catchError(res, e.message)
       }
     },
@@ -39,54 +35,51 @@ module.exports = {
       //Check input data
       if(email == undefined || password == undefined)
       {
-         //resResources will response message then stop
-        resResources.missPara(res)
+        return resResources.missPara(res)
       }
       //Check user is exist?
       let dbUsers = await userResources.getUserByEmail(email)
       if(dbUsers.length == 0)
       {
-         //resResources will response message then stop
-        resResources.notFound(res, 'Email not found')
+        return resResources.notFound(res, 'Email not found')
       }
       //Check auth
       let dbUser = dbUsers[0];
       let isPass = await authResources.getCompare(password, dbUser.password)
       if(!isPass)
       {
-         //resResources will response message then stop
-        resResources.authFail(res)
+        return resResources.authFail(res)
       }
       //Get Token
       if(dbUser) {
           delete dbUser.password
+          delete dbUser.remember_token
           delete dbUser.created_at
           delete dbUser.updated_at 
       }
           
       dbUser.remember_token = await authResources.getToken(dbUser);
-      console.log(dbUser);
-       //resResources will response resulr
-      resResources.getDtaSuccess(dbUser)
+      //console.log(dbUser);
+      resResources.getDtaSuccess(res, dbUser)
     } catch (e) {
-       //resResources will response catch error
-      resResources.catchError(res)
+      resResources.catchError(res, e.message)
     }
   },
 
   async register(req, res, next) {
     try {
       //Get input data
-      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      let token = authResources.getInputToken(req)
       let name = req.body.name || req.query.name
       let email = req.body.email || req.query.email
       let password = req.body.password || req.query.password
-      let cp_id = req.body.cpId || req.query.cpId
+      let cp_id = req.body.cp_id || req.query.cp_id
+      let role_id = req.body.role_id || req.query.role_id
+      
       //Check input data
       if(name == undefined || email == undefined || password == undefined)
       {
-         //resResources will response message then stop
-        resResources.missPara(res)
+        return resResources.missPara(res)
       }
       let hashCode = await authResources.getHashCode(password)
       let myHash = hashCode.replace('$2b$', '$2y$');
@@ -95,90 +88,91 @@ module.exports = {
         email: email,
         password: myHash,
         role_id: 4,
+        cp_id: 1,
         created_at: new Date(),
         updated_at: new Date()
       }
       //For admin to add user
-      if(token !== 'undefined') {
+      if(token !== undefined) {
         let verify = await authResources.tokenVerify(token)
-        if(verify.role_id<3) {//admin
-          obj['cp_id'] = verify.cp_id
+        if(verify.role_id > 1) {//Except super admin
+          obj['cp_id'] = verify.cp_id//Local admin add same cp user
+        } else if(verify.role_id == 1) {//super admin
+          if(cp_id != undefined)
+            obj['cp_id'] = parseInt(cp_id)//Super admin can define cp
+          else
+            obj['cp_id'] = verify.cp_id//If no cp_id same as super admin
+        } 
+        if(verify.role_id <= 2) {//Both local and super admin
+          if(role_id != undefined)
+            role_id = parseInt(role_id)
+          if(role_id < verify.role_id)
+            role_id = verify.role_id
           obj['email_verified_at'] = new Date()
         }
-      } else {
-        if(cp_id === undefined || cp_id === null )
-        {
-          cp_id = 1
-        }
-        obj['cp_id'] = cp_id 
-      }
+      } 
       
       let newUser = await userResources.createUser(obj)
-      //resResources will response message
+      console.log('Create user : '+ newUser)
       resResources.doSuccess(res, 'Register success')
     } catch (e) {
-      //resResources will response catch error
-      resResources.catchError(e.message)
+      resResources.catchError(res, e.message)
     }
   },
 
   async show(req, res, next) { 
     try {
-      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
-      if(token === 'undefined') {
-        resResources.noAccess(res)
+      let token = authResources.getInputToken(req)
+      if(token === undefined) {
+        return resResources.noAccess(res)
       }
       let id = req.params.id
+      if(typeof(id) === 'string')
+        id = parseInt(id)
       let verify = await authResources.tokenVerify(token)
       //Normal users can only see themselves
       if(verify.role_id > 2 && verify.id != id){
-         //resResources will response message then stop
-        resResources.notAllowed(res)
+        return resResources.notAllowed(res)
       }
       let users = await userResources.getUserById(id)
-      //resResources will response result
-      resResources.getDtaSuccess(users[0])
+      resResources.getDtaSuccess(res, users[0])
     } catch (e) {
-      //resResources will response catch error
-      resResources.catchError(res)
+      resResources.catchError(res, e.message)
     }
   },
 
   async update(req, res, next) {
     try {
       //Get input data
-      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      let token = authResources.getInputToken(req)
+      if(token === undefined) {
+        return resResources.noAccess(res)
+      }
       let id = req.params.id
-      let cp_id = req.body.cpId || req.query.cpId
-      let role_id = req.body.cpId || req.query.cpId
+      let cp_id = req.body.cp_id || req.query.cp_id
+      let role_id = req.body.role_id || req.query.role_id
       let obj = {}
       if(typeof(id) === 'string')
         id = parseInt(id)
-      if(token === 'undefined') {
-        //resResources will response message then stop
-        resResources.noAccess(res)
-      } else {
-        let verify = await authResources.tokenVerify(token)
-        if(verify.role_id >2 && verify.id != id){
-          //resResources will response message then stop
-          resResources.notAllowed(res)
-        } else if(verify.role_id == 2 && role_id == 1){
-          //Admin change to super admin is not allowed
-          //resResources will response message then stop
-          resResources.notAllowed(res)
-        } else if (verify.role_id == 2 && role_id > 1){
-          //For admin update name / password / role_id
-          
+      
+      let verify = await authResources.tokenVerify(token)
+      if(verify.role_id >2 && verify.id != id){
+        //Normal users can only update themselves
+        return resResources.notAllowed(res)
+      } else if(verify.role_id == 2 && role_id == 1){
+        //Admin change to super admin is not allowed
+        return resResources.notAllowed(res)
+      } else if (verify.role_id == 2 && role_id > 1){
+        //For admin update name / password / role_id
+        if(role_id != undefined)
+            obj['role_id'] = parseInt(role_id)
+      } else if (verify.role_id == 1){//Super admin
           if(role_id != undefined)
-              obj['role_id'] = role_id
-          
-        } else if (verify.role_id == 1){//Super admin
-          if(role_id != undefined)
-              obj['role_id'] = role_id
+            obj['role_id'] = parseInt(role_id)
           if(cp_id != undefined)
-              obj['cp_id'] = cp_id
-        }
+            obj['cp_id'] = parseInt(cp_id)
       }
+      
       let name = req.body.name || req.query.name
       let password = req.body.password || req.query.password
 
@@ -191,51 +185,47 @@ module.exports = {
         let myHash = hashCode.replace('$2b$', '$2y$');
         obj['password'] = myHash
       }
+      obj['updated_at'] = new Date()
       
       await userResources.updateBId(id, obj)
-      //resResources will response message
       resResources.doSuccess(res, 'Update success')
     } catch (e) {
-      //resResources will response message catch error
-      resResources.catchError(e.message)
+      resResources.catchError(res, e.message)
     }
   },
 
   async destroy(req, res, next) {
     try {
-      let token = req.body.token || decodeURI(req.query.token) || req.headers.Authorization
+      let token = authResources.getInputToken(req)
+      if(token === undefined) {
+        //resResources will response message then stop
+        return resResources.noAccess(res)
+      }
       let id = req.params.id
       let result = 0
       if(typeof(id) === 'string')
         id = parseInt(id)
-      if(token === 'undefined') {
-        //resResources will response message then stop
-        resResources.noAccess(res)
-      } else {
-        let verify = await authResources.tokenVerify(token)
-        //Only administrators and super administrators have the right
-        if(verify.role_id > 2 || id == 1){
-          //resResources will response message then stop
-          resResources.notAllowed(res)
-        }
-        
-        //Administrators can delete users from the same company
-        if(verify.role_id == 2)
-          result = await userResources.destroyById2(id, verify.cp_id)
-        else if(verify.role_id == 1)
-          //Super administrators can delete all of users
-          result = await userResources.destroyById(id)
+      
+      let verify = await authResources.tokenVerify(token)
+      //Only administrators and super administrators have the right
+      if(verify.role_id > 2 || id == 1){
+        return resResources.notAllowed(res)
       }
+      
+      //Administrators can delete users from the same company
+      if(verify.role_id == 2)
+        result = await userResources.destroyById2(id, verify.cp_id)
+      else if(verify.role_id == 1)
+        //Super administrators can delete all of users
+        result = await userResources.destroyById(id)
+      
       if(result == 0){
-        //resResources will response message
         resResources.notAllowed(res)
       } else {
-        //resResources will response message
         resResources.doSuccess(res, 'Delete success')
       }
     } catch (e) {
-       //resResources will response catch error
-      resResources.catchError(e.message)
+      resResources.catchError(res, e.message)
     }
   }
 }

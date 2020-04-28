@@ -26,13 +26,13 @@ const userController = require('../controllers/userController')
 
 const userRoute = express.Router()
 
-userRoute.get('/users', userController.index)
+userRoute.get('/', userController.index)
 
-userRoute.post('/users/login', userController.login)
-userRoute.post('/users/register', userController.register)
+userRoute.post('/login', userController.login)
+userRoute.post('/register', userController.register)
 
-userRoute.get('/users/:id', userController.show)
-userRoute.put('/users/:id', userController.update)
-userRoute.delete('/users/:id', userController.destroy)
+userRoute.get('/:id', userController.show)
+userRoute.put('/:id', userController.update)
+userRoute.delete('/:id', userController.destroy)
 
 module.exports = userRoute
