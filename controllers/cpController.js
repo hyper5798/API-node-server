@@ -16,8 +16,8 @@ module.exports = {
           return resResources.noAccess(res)
         }
         let verify = await authResources.tokenVerify(token)
-        if(!verify || verify.cp_id == undefined){
-          return resResources.notAllowed(res)
+        if(verify.role_id !=1){
+           return resResources.notAllowed(res)
         }
         let cps = await Cp.findAll({
           where: {
@@ -36,6 +36,10 @@ module.exports = {
       let token = authResources.getInputToken(req)
       if(token === undefined) {
         return resResources.noAccess(res)
+      }
+      let verify = await authResources.tokenVerify(token)
+      if(verify.role_id !=1){
+         return resResources.notAllowed(res)
       }
       let cp_name = req.body.cp_name || req.query.cp_name
       let phone = req.body.phone || req.query.phone
@@ -70,20 +74,23 @@ module.exports = {
       if(token === undefined) {
         return resResources.noAccess(res)
       }
+      let verify = await authResources.tokenVerify(token)
+      if(verify.role_id !=1){
+         return resResources.notAllowed(res)
+      }
       let id = req.params.id
       if(typeof(id) === 'string')
         id = parseInt(id)
-      let verify = await authResources.tokenVerify(token)
-      //Normal users can only see themselves
-      if(verify.role_id > 2){
-         return resResources.notAllowed(res)
-      }
+
       let cps = await Cp.findAll({
         where: {
             "id":id
         }
       })
-      resResources.getDtaSuccess(res, cps[0])
+      if(cps.length>0)
+        resResources.getDtaSuccess(res, cps[0])
+      else 
+        resResources.getDtaSuccess(res, cps)
     } catch (e) {
       resResources.catchError(res, e.message)
     }
@@ -95,6 +102,10 @@ module.exports = {
       let token = authResources.getInputToken(req)
       if(token === undefined) {
         return resResources.noAccess(res)
+      }
+      let verify = await authResources.tokenVerify(token)
+      if(verify.role_id != 1){
+        return resResources.notAllowed(res)
       }
       let id = req.params.id
       
@@ -140,6 +151,10 @@ module.exports = {
       let token = authResources.getInputToken(req)
       if(token === undefined) {
         return resResources.noAccess(res)
+      }
+      let verify = await authResources.tokenVerify(token)
+      if(verify.role_id != 1){
+        return resResources.notAllowed(res)
       }
       let id = req.params.id
       let result = 0

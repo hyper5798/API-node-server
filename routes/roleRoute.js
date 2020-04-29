@@ -10,13 +10,13 @@
 const express = require('express')
 const roleController = require('../controllers/roleController')
 
-const cpRoute = express.Router()
+const roleRoute = express.Router()
 
-cpRoute.get('/', roleController.index)
+roleRoute.get('/', roleController.index)
 
-cpRoute.post('/create', roleController.create)
-//cpRoute.get('/:id', roleController.show)
-cpRoute.put('/:id', roleController.update)
-cpRoute.delete('/:id', roleController.destroy)
+roleRoute.post('/create', roleController.create)
+//roleRoute.get('/:id', roleController.show)
+roleRoute.put('/:id', roleController.update)
+roleRoute.delete('/:id', roleController.destroy)
 
-module.exports = cpRoute
+module.exports = roleRoute

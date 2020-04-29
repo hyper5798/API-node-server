@@ -6,7 +6,7 @@
 
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
-const Role = require('../db/models').Role
+const Type = require('../db/models').Type
 
 module.exports = {
     async index(req, res, next) {
@@ -19,8 +19,8 @@ module.exports = {
         if(verify.role_id != 1){
           return resResources.notAllowed(res)
         }
-        let roles = await Role.findAll()
-        resResources.getDtaSuccess(res, roles)
+        let types = await Type.findAll()
+        resResources.getDtaSuccess(res, types)
       } catch (e) {
         resResources.catchError(res, e.message)
       }
@@ -37,60 +37,69 @@ module.exports = {
       if(verify.role_id != 1){
         return resResources.notAllowed(res)
       }
-      let role_id = req.body.role_id || req.query.role_id
-      let role_name = req.body.role_name || req.query.role_name
-      let dataset = req.body.dataset || req.query.dataset
+      let type_id = req.body.type_id || req.query.type_id
+      let type_name = req.body.type_name || req.query.type_name
+      let description = req.body.description || req.query.description
+      let image_url = req.body.image_url || req.query.image_url
+      let rules = req.body.rules || req.query.rules
       //Check input data
-      if(role_id == undefined || role_name == undefined)
+      if(type_id == undefined || type_name == undefined || rules == undefined)
       {
          return resResources.missPara(res)
       }
 
-      if(typeof role_id == 'string')
-        role_id = parseInt(role_id)
-      
-      if(dataset == undefined)
-        dataset = role_id 
+      if(typeof type_id == 'string')
+        type_id = parseInt(type_id)
+      if(typeof(rules) == 'string')
+        rules = JSON.stringify(JSON.parse(rules))
      
       let obj = {
-        "role_id": role_id,
-        "role_name": role_name,
-        "dataset": dataset,
+        "type_id": type_id,
+        "type_name": type_name,
+        "rules": rules,
         "created_at": new Date(),
         "updated_at": new Date()
       }
+      if(description != undefined)
+        obj['description'] = description
+      if(image_url != undefined)
+        obj['image_url'] = image_url
       
-      let newRole = await Role.create(obj)
-      resResources.doSuccess(res, 'Create role success')
+      let newTYpe = await Type.create(obj)
+      console.log(typeof newTYpe)
+      resResources.doSuccess(res, 'Create type success')
     } catch (e) {
       resResources.catchError(res, e.message)
     }
   },
 
-  /*async show(req, res, next) { 
+  async show(req, res, next) { 
     try {
       let token = authResources.getInputToken(req)
       if(token === undefined) {
         return resResources.noAccess(res)
       }
+      let verify = await authResources.tokenVerify(token)
+      if(verify.role_id != 1){
+         return resResources.notAllowed(res)
+      }
       let id = req.params.id
       if(typeof(id) === 'string')
         id = parseInt(id)
-      let verify = await authResources.tokenVerify(token)
-      //Normal users can only see themselves
-      if(verify.role_id > 2){
-         return resResources.notAllowed(res)
-      }
-      let roles = await Role.findAll({
+      
+      let types = await Type.findAll({
         where: {
             "id":id
         }
       })
-      resResources.getDtaSuccess(res, roles[0])
+      if(types.length>0)
+        resResources.getDtaSuccess(res, types[0])
+      else 
+        resResources.getDtaSuccess(res, types)
     } catch (e) {
       resResources.catchError(res, e.message)
     }
-  },*/
+  },
 
   async update(req, res, next) {
     try {
@@ -108,21 +117,27 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-
-      let role_id = req.body.role_id || req.query.role_id
-      let role_name = req.body.role_name || req.query.role_name
-      let dataset = req.body.dataset || req.query.dataset
+      
+      let type_id = req.body.type_id || req.query.type_id
+      let type_name = req.body.type_name || req.query.type_name
+      let description = req.body.description || req.query.description
+      let image_url = req.body.image_url || req.query.image_url
+      let rules = req.body.rules || req.query.rules
 
       //for normal user update name / password
-      if(role_id != undefined)
-        attributes['role_id'] = parseInt(role_id)
-      if(role_name != undefined)
-        attributes['role_name'] = role_name
-      if(dataset != undefined)
-        attributes['dataset'] = dataset
+      if(type_id != undefined)
+        attributes['type_id'] = parseInt(type_id)
+      if(type_name != undefined)
+        attributes['type_name'] = type_name
+      if(description != undefined)
+        attributes['description'] = description
+      if(image_url != undefined)
+        attributes['image_url'] = image_url
+      if(rules != undefined)
+        attributes['rules'] = rules
       attributes['updated_at'] = new Date()
       
-      await Role.update(
+      await Type.update(
         /* set attributes' value */
         attributes,
         /* condition for find*/
@@ -149,12 +164,7 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
-      //Only administrators and super administrators have the right
-      if(verify.role_id > 1 || id == 1){ //Can't delete main company
-        return resResources.notAllowed(res)
-      }
-      result = await Role.destroy({
+      result = await Type.destroy({
         where: {
             "id":id
         }

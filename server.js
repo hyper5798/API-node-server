@@ -43,6 +43,7 @@ module.exports = async function createServer () {
   app.use('/users', require('./routes/userRoute'))
   app.use('/cps', require('./routes/cpRoute'))
   app.use('/roles', require('./routes/roleRoute'))
+  app.use('/types', require('./routes/typeRoute'))
 
   const server = http.createServer(app).listen(app.get('port'), '0.0.0.0', () => {
     console.log("Server started at http://localhost:" + app.get('port') + "/")

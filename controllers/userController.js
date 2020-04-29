@@ -87,7 +87,7 @@ module.exports = {
         name: name,
         email: email,
         password: myHash,
-        role_id: 4,
+        role_id: 9,
         cp_id: 1,
         created_at: new Date(),
         updated_at: new Date()
@@ -135,7 +135,10 @@ module.exports = {
         return resResources.notAllowed(res)
       }
       let users = await userResources.getUserById(id)
-      resResources.getDtaSuccess(res, users[0])
+      if(users.length>0)
+        resResources.getDtaSuccess(res, users[0])
+      else 
+        resResources.getDtaSuccess(res, users)
     } catch (e) {
       resResources.catchError(res, e.message)
     }
