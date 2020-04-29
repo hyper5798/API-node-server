@@ -6,7 +6,7 @@
 
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
-const Cp = require('../db/models').Cp
+const Role = require('../db/models').Role
 
 module.exports = {
     async index(req, res, next) {
@@ -16,15 +16,11 @@ module.exports = {
           return resResources.noAccess(res)
         }
         let verify = await authResources.tokenVerify(token)
-        if(!verify || verify.cp_id == undefined){
+        if(!verify || verify.role_id != 1){
           return resResources.notAllowed(res)
         }
-        let cps = await Cp.findAll({
-          where: {
-              "id":verify.cp_id
-          }
-        })
-        resResources.getDtaSuccess(res, cps)
+        let roles = await Role.findAll()
+        resResources.getDtaSuccess(res, roles)
       } catch (e) {
         resResources.catchError(res, e.message)
       }
@@ -37,34 +33,40 @@ module.exports = {
       if(token === undefined) {
         return resResources.noAccess(res)
       }
-      let cp_name = req.body.cp_name || req.query.cp_name
-      let phone = req.body.phone || req.query.phone
-      let address = req.body.address || req.query.address
+      let role_id = req.body.role_id || req.query.role_id
+      let role_name = req.body.role_name || req.query.role_name
+      let dataset = req.body.dataset || req.query.dataset
       //Check input data
-      if(cp_name == undefined)
+      if(role_id == undefined || role_name == undefined)
       {
          return resResources.missPara(res)
       }
-      if(phone == undefined)
-        phone = null
-      if(address == undefined)
-        address = null
+      if(role_id <= 2){
+        return resResources.notAllowed(res)
+      }
+
+      if(typeof role_id == 'string')
+        role_id = parseInt(role_id)
+      
+      if(dataset == undefined)
+        dataset = role_id 
+     
       let obj = {
-        "cp_name": cp_name,
-        "phone": phone,
-        "address": address,
+        "role_id": role_id,
+        "role_name": role_name,
+        "dataset": dataset,
         "created_at": new Date(),
         "updated_at": new Date()
       }
       
-      let newCp = await Cp.create(obj)
-      resResources.doSuccess(res, 'Create company success')
+      let newRole = await Role.create(obj)
+      resResources.doSuccess(res, 'Create role success')
     } catch (e) {
       resResources.catchError(res, e.message)
     }
   },
 
-  async show(req, res, next) { 
+  /*async show(req, res, next) { 
     try {
       let token = authResources.getInputToken(req)
       if(token === undefined) {
@@ -78,16 +80,16 @@ module.exports = {
       if(verify.role_id > 2){
          return resResources.notAllowed(res)
       }
-      let cps = await Cp.findAll({
+      let roles = await Role.findAll({
         where: {
             "id":id
         }
       })
-      resResources.getDtaSuccess(res, cps[0])
+      resResources.getDtaSuccess(res, roles[0])
     } catch (e) {
       resResources.catchError(res, e.message)
     }
-  },
+  },*/
 
   async update(req, res, next) {
     try {
@@ -103,27 +105,23 @@ module.exports = {
         id = parseInt(id)
       
       let verify = await authResources.tokenVerify(token)
-      if(verify.role_id >2 && verify.cp_id != id){
+      if(verify.role_id > 1){
         return resResources.notAllowed(res)
-      } else if(verify.role_id == 2 && verify.cp_id != id){
-        //Admin cnahge other cp's data is not allowed
-        return resResources.notAllowed(res)
-      } 
-      let cp_name = req.body.cp_name || req.query.cp_name
-      let phone = req.body.phone || req.query.phone
-      let address = req.body.address || req.query.address
+      }
+      let role_id = req.body.role_id || req.query.role_id
+      let role_name = req.body.role_name || req.query.role_name
+      let dataset = req.body.dataset || req.query.dataset
 
       //for normal user update name / password
-      if(cp_name != undefined)
-        attributes['cp_name'] = cp_name
-      if(phone != undefined)
-        attributes['phone'] = phone
-      if(address != undefined){
-        attributes['address'] = address
-      }
+      if(role_id != undefined)
+        attributes['role_id'] = parseInt(role_id)
+      if(role_name != undefined)
+        attributes['role_name'] = role_name
+      if(dataset != undefined)
+        attributes['dataset'] = dataset
       attributes['updated_at'] = new Date()
       
-      await Cp.update(
+      await Role.update(
         /* set attributes' value */
         attributes,
         /* condition for find*/
@@ -151,7 +149,7 @@ module.exports = {
       if(verify.role_id > 1 || id == 1){ //Can't delete main company
         return resResources.notAllowed(res)
       }
-      result = await Cp.destroy({
+      result = await Role.destroy({
         where: {
             "id":id
         }

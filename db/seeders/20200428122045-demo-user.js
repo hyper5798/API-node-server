@@ -14,11 +14,11 @@ module.exports = {
       created_at: new Date(),
       updated_at: new Date()
     },{
-      name: 'Manager',
+      name: 'MIT',
       email: 'test@example.com',
       password: '$2y$10$Ag/eqqkUDkaW0hTqcFY/XucsoROHOOBvd1d4cByrz2MLXIFIMix5.',
       cp_id: 1,
-      role_id: 1,
+      role_id: 2,
       email_verified_at: null,
       remember_token: null,
       active: 1,
