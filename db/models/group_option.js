@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Group_option = sequelize.define('Group-option', {
+  const Group_option = sequelize.define('Group_option', {
     option_name: DataTypes.STRING,
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE

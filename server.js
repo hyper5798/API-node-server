@@ -11,6 +11,8 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
+const mqttSubClient = require('./modules/mqttSubClient')
+
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
 
