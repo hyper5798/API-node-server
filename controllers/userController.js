@@ -5,7 +5,6 @@
  */
 
 const userResources = require('../lib/userResources')
-const asyncResources = require('../lib/asyncResources')
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 

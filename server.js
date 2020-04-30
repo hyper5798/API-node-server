@@ -39,7 +39,7 @@ module.exports = async function createServer () {
   /**
    * Routes for the application
    */
-  //app.use('/', require('./routes/mySubApp'))
+  app.use('/', require('./routes/mySubApp'))
   app.use('/users', require('./routes/userRoute'))
   app.use('/cps', require('./routes/cpRoute'))
   app.use('/roles', require('./routes/roleRoute'))
