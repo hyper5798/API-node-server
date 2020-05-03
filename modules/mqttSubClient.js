@@ -44,11 +44,53 @@ function handleDownload (msg) {
 function handleUpload1 (msg) {  
     let message = msg.toString()
     console.log('handleUpload1: %s', message)
+    let result = saveMessage (message)
+    console.log(result)
 }
 
 function handleUpload2 (msg) {  
     let message = msg.toString()
     //console.log('handleUpload2: %s', message)
 }
+
+async function saveMessage (obj) {
+    let newReport = null
+    try {
+        const Report = require('../db/models').Report
+        let jsonObj = getJSONObj(obj)
+        // console.log('jsonObj :')
+        // console.log(jsonObj)
+        
+        jsonObj['type_id'] = parseInt(jsonObj.fport)
+        delete jsonObj.fport
+        jsonObj['extra'] = {}
+        if(jsonObj.frameCnt !== undefined){
+            jsonObj.extra['frameCnt'] = jsonObj.frameCnt
+            delete jsonObj.frameCnt
+        } else {
+            jsonObj.extra = null
+        } 
+
+        console.log('save jsonObj :')
+        console.log(jsonObj)
+        return await Report.create(obj)
+    } catch (error) {
+        return error
+    }
+}
+
+function getJSONObj(obj) {
+    let jsonObj = {}
+    if(typeof obj == 'string'){
+        obj = JSON.parse(obj)
+    }
+    if(Array.isArray(obj)) {
+        jsonObj = obj[0]
+    } else {
+        jsonObj = obj
+    }
+    return jsonObj
+}
+
 
 

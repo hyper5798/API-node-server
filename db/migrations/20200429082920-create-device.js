@@ -12,7 +12,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.STRING
       },
-      mac: {
+      macAddr: {
         allowNull: false,
         type: Sequelize.STRING
       },

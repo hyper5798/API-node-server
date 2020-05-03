@@ -2,7 +2,7 @@
   "development": {
     "username": "admin",
     "password": "gemtek12345",
-    "database": "homestead",
+    "database": "yesiodb",
     "host": "127.0.0.1",
     "dialect": "mysql",
     "operatorsAliases": false

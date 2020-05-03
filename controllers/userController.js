@@ -11,11 +11,8 @@ const resResources = require('../lib/resResources')
 module.exports = {
     async index(req, res, next) {
       try {
-        let token = authResources.getInputToken(req)
-        if(token === undefined) {
-          return resResources.noAccess(res)
-        }
-        let verify = await authResources.tokenVerify(token)
+        
+        let verify = req.user
         if(!verify || verify.cp_id == undefined){
           return resResources.notAllowed(res)
         }
@@ -68,7 +65,6 @@ module.exports = {
   async register(req, res, next) {
     try {
       //Get input data
-      let token = authResources.getInputToken(req)
       let name = req.body.name || req.query.name
       let email = req.body.email || req.query.email
       let password = req.body.password || req.query.password
@@ -92,8 +88,8 @@ module.exports = {
         updated_at: new Date()
       }
       //For admin to add user
-      if(token !== undefined) {
-        let verify = await authResources.tokenVerify(token)
+      let verify = req.user
+      if(verify !== undefined) {
         if(verify.role_id > 1) {//Except super admin
           obj['cp_id'] = verify.cp_id//Local admin add same cp user
         } else if(verify.role_id == 1) {//super admin
@@ -121,18 +117,17 @@ module.exports = {
 
   async show(req, res, next) { 
     try {
-      let token = authResources.getInputToken(req)
-      if(token === undefined) {
-        return resResources.noAccess(res)
-      }
-      let id = req.params.id
-      if(typeof(id) === 'string')
-        id = parseInt(id)
-      let verify = await authResources.tokenVerify(token)
+      
+      let verify = req.user
       //Normal users can only see themselves
       if(verify.role_id > 2 && verify.id != id){
         return resResources.notAllowed(res)
       }
+
+      let id = req.params.id
+      if(typeof(id) === 'string')
+        id = parseInt(id)
+
       let users = await userResources.getUserById(id)
       if(users.length>0)
         resResources.getDtaSuccess(res, users[0])
@@ -146,10 +141,7 @@ module.exports = {
   async update(req, res, next) {
     try {
       //Get input data
-      let token = authResources.getInputToken(req)
-      if(token === undefined) {
-        return resResources.noAccess(res)
-      }
+      
       let id = req.params.id
       let cp_id = req.body.cp_id || req.query.cp_id
       let role_id = req.body.role_id || req.query.role_id
@@ -157,7 +149,7 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
+      let verify = req.user
       if(verify.role_id >2 && verify.id != id){
         //Normal users can only update themselves
         return resResources.notAllowed(res)
@@ -198,17 +190,12 @@ module.exports = {
 
   async destroy(req, res, next) {
     try {
-      let token = authResources.getInputToken(req)
-      if(token === undefined) {
-        //resResources will response message then stop
-        return resResources.noAccess(res)
-      }
       let id = req.params.id
       let result = 0
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
+      let verify = req.user
       //Only administrators and super administrators have the right
       if(verify.role_id > 2 || id == 1){
         return resResources.notAllowed(res)

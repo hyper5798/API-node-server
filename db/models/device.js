@@ -2,7 +2,7 @@
 module.exports = (sequelize, DataTypes) => {
   const Device = sequelize.define('Device', {
     device_name: DataTypes.STRING,
-    mac: DataTypes.STRING,
+    macAddr: DataTypes.STRING,
     status: DataTypes.INTEGER,
     cp_id: DataTypes.INTEGER,
     user_id: DataTypes.INTEGER,

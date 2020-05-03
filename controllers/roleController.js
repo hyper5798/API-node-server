@@ -11,11 +11,7 @@ const Role = require('../db/models').Role
 module.exports = {
     async index(req, res, next) {
       try {
-        let token = authResources.getInputToken(req)
-        if(token === undefined) {
-          return resResources.noAccess(res)
-        }
-        let verify = await authResources.tokenVerify(token)
+        let verify = req.user
         if(verify.role_id != 1){
           return resResources.notAllowed(res)
         }
@@ -29,11 +25,7 @@ module.exports = {
   async create(req, res, next) {
     try {
       //Get input data
-      let token = authResources.getInputToken(req)
-      if(token === undefined) {
-        return resResources.noAccess(res)
-      }
-      let verify = await authResources.tokenVerify(token)
+      let verify = req.user
       if(verify.role_id != 1){
         return resResources.notAllowed(res)
       }
@@ -95,11 +87,7 @@ module.exports = {
   async update(req, res, next) {
     try {
       //Get input data
-      let token = authResources.getInputToken(req)
-      if(token === undefined) {
-        return resResources.noAccess(res)
-      }
-      let verify = await authResources.tokenVerify(token)
+      let verify = req.user
       if(verify.role_id != 1){
         return resResources.notAllowed(res)
       }
@@ -136,11 +124,7 @@ module.exports = {
 
   async destroy(req, res, next) {
     try {
-      let token = authResources.getInputToken(req)
-      if(token === undefined) {
-        return resResources.noAccess(res)
-      }
-      let verify = await authResources.tokenVerify(token)
+      let verify = req.user
       if(verify.role_id != 1){
         return resResources.notAllowed(res)
       }

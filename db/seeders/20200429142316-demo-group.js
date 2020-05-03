@@ -3,7 +3,7 @@
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.bulkInsert('Groups', [{
-      name: '養蜂班',
+      group_name: '養蜂班',
       cp_id: 1,
       group_option: 1,//only members
       members: null,

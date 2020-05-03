@@ -28,8 +28,8 @@ const userRoute = express.Router()
 
 userRoute.get('/', userController.index)
 
-userRoute.post('/login', userController.login)
-userRoute.post('/register', userController.register)
+//userRoute.post('/login', userController.login)
+//userRoute.post('/register', userController.register)
 
 userRoute.get('/:id', userController.show)
 userRoute.put('/:id', userController.update)

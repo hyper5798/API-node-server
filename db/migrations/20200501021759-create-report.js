@@ -1,41 +1,35 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Groups', {
+    return queryInterface.createTable('Reports', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      group_name: {
+      macAddr: {
         allowNull: false,
         type: Sequelize.STRING
       },
-      cp_id: {
+      type_id: {
         allowNull: false,
         type: Sequelize.INTEGER
       },
-      group_option: {
+      data: {
         allowNull: false,
-        defaultValue: 1, //1:only member, 2:only device, 3:Both
-        type: Sequelize.INTEGER
-      },
-      members: {
         type: Sequelize.TEXT
       },
-      devices: {
+      extra: {
         type: Sequelize.TEXT
       },
-      created_at: {
-        type: Sequelize.DATE
-      },
-      updated_at: {
+      recv: {
+        allowNull: false,
         type: Sequelize.DATE
       }
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Groups');
+    return queryInterface.dropTable('Reports');
   }
 };
