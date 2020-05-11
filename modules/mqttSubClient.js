@@ -1,5 +1,7 @@
 var mqtt = require('mqtt');
 const mqttConfig = require('../config/mqtt.json')
+const redis  = require('./redisClient')
+var Promise = require('bluebird')
 
 var options = {
 	port: mqttConfig.port,
@@ -13,13 +15,26 @@ var options = {
 var client = mqtt.connect(options)
 
 client.on('connect', function()  {
-	console.log(new Date() + ' start connect MQTT' );
-    client.subscribe(mqttConfig.ulTopic1);
-    client.subscribe(mqttConfig.ulTopic2);
-    client.subscribe(mqttConfig.dlTopic);
+    console.log(new Date() + ' start connect MQTT' );
+    setValue('test', '12345')
+    client.subscribe(mqttConfig.ulTopic1)
+    client.subscribe(mqttConfig.ulTopic2)
+    client.subscribe(mqttConfig.dlTopic)
 })
 
+let  setValue = async (key,value) => {
+    let result =  await redis.setAsync(key, value);
+    return Promise.resolve(result)
+};
+
+
+let  getValue = async (key) => {
+    let value = await redis.getAsync(key);
+    return Promise.resolve(value)
+};
+
 client.on('message', (topic, msg) => {  
+    
     if(topic.includes('YESIO/UL'))
         return handleUpload1(msg)
     else if(topic.includes('GIOT-GW/UL'))
@@ -47,10 +62,12 @@ function handleUpload1 (msg) {
     let result = saveMessage (message)
     console.log(result)
 }
-
-function handleUpload2 (msg) {  
+async function handleUpload2 (msg) {  
+    let result = await setValue('test', '45678');
+    let test = await getValue('test');
     let message = msg.toString()
     //console.log('handleUpload2: %s', message)
+    console.log('getValue(key): %s', test)
 }
 
 async function saveMessage (obj) {
