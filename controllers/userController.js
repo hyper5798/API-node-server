@@ -64,6 +64,11 @@ module.exports = {
 
   async register(req, res, next) {
     try {
+      let token = authResources.getInputToken(req)
+      if(token === undefined) {
+        return resResources.noAccess(res)
+      }
+      let verify = await authResources.tokenVerify(token)
       //Get input data
       let name = req.body.name || req.query.name
       let email = req.body.email || req.query.email
@@ -84,11 +89,11 @@ module.exports = {
         password: myHash,
         role_id: 9,
         cp_id: 1,
+        active: 1,
         created_at: new Date(),
         updated_at: new Date()
       }
       //For admin to add user
-      let verify = req.user
       if(verify !== undefined) {
         if(verify.role_id > 1) {//Except super admin
           obj['cp_id'] = verify.cp_id//Local admin add same cp user
