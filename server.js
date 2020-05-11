@@ -62,7 +62,7 @@ module.exports = async function createServer () {
   app.post('/users/register', userController.register)
 
   //Set token check middleware
-  //app.use(setCurrentUser)
+  app.use(setCurrentUser)
 
   //app.use('/', require('./routes/mySubApp'))
   app.use('/users', require('./routes/userRoute'))

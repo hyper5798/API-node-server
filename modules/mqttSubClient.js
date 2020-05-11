@@ -63,11 +63,11 @@ function handleUpload1 (msg) {
     console.log(result)
 }
 async function handleUpload2 (msg) {  
-    let result = await setValue('test', '45678');
-    let test = await getValue('test');
+    //let result = await setValue('test', '45678');
+    //let test = await getValue('test');
     let message = msg.toString()
     //console.log('handleUpload2: %s', message)
-    console.log('getValue(key): %s', test)
+    //console.log('getValue(key): %s', test)
 }
 
 async function saveMessage (obj) {
