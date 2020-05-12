@@ -7,4 +7,7 @@ node_modules
 # Optional npm cache directory
 .npm
 .vscode
+.nodered
+
+app.json
 

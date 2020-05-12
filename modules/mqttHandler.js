@@ -95,12 +95,25 @@ async function handleUpload2 (topic,msg) {
   //let test = await getValue('test');
   let message = msg.toString()
   let jsonObj = getJSONObj(message)
+  //Filter mac ---------------------------------------------------------- start
   let mac=jsonObj.macAddr
   let macStatus = await util.getValue('mac'+mac);
-  console.log('macStatus : %s', macStatus)
+  //console.log('macStatus : %s', macStatus)
   if(macStatus==null || macStatus == '0') {
     console.log( '%s %s is not active, drop this message', getDatestring(),mac)
     return;
+  }
+  //Parsing message ------------------------------------------------------ start
+  let parsingObj = await util.parsingMsg(jsonObj)
+  console.log('topic : %s',topic)
+  console.log(parsingObj)
+  if(parsingObj == null) {
+    console.log( '%s %s is no type (%s) parsing, drop this message', getDatestring(),mac, jsonObj.fport)
+    return;
+  }
+  let result = await saveMessage (parsingObj)
+  if(result.dataValues.id){
+    console.log(getDatestring() +' -> Save message success')
   }
 }
 
