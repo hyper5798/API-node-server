@@ -12,9 +12,12 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
+//const mqttSubClient = require('./modules/mqttSubClient')
+let mqttHandler = require('./modules/mqttHandler')
 const mqttSubClient = require('./modules/mqttSubClient')
 const userController = require('./controllers/userController')
 const setCurrentUser = require('./middleware/setCurrentUser.js')
+const debug = true
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -30,6 +33,8 @@ const setting = {
 module.exports = async function createServer () {
 
   const app = express()
+  let mqttClient = new mqttHandler();
+  mqttClient.connect();
 
   app.use(errorhandler())
 
@@ -62,7 +67,14 @@ module.exports = async function createServer () {
   app.post('/users/register', userController.register)
 
   //Set token check middleware
-  app.use(setCurrentUser)
+  if(!debug)
+    app.use(setCurrentUser)
+  
+  //MQTT publish
+  app.post("/send-mqtt", function(req, res) {
+    mqttClient.sendMessage(req.body.message);
+    res.status(200).send("Message sent to mqtt");
+  });
 
   //app.use('/', require('./routes/mySubApp'))
   app.use('/users', require('./routes/userRoute'))
