@@ -24,8 +24,9 @@ module.exports = {
         type: Sequelize.TEXT
       },
       recv: {
-        allowNull: false,
-        type: Sequelize.DATE
+        type: 'TIMESTAMP',
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        allowNull: false
       }
     });
   },
