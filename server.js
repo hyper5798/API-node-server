@@ -13,7 +13,6 @@ const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
 let mqttHandler = require('./modules/mqttHandler')
-const mqttSubClient = require('./modules/mqttSubClient')
 const userController = require('./controllers/userController')
 const setCurrentUser = require('./middleware/setCurrentUser.js')
 const debug = true

@@ -2,6 +2,8 @@ const mqttConfig = require('../config/mqtt.json')
 const mqtt = require('mqtt')
 const Sequelize = require('sequelize')
 const Report = require('../db/models').Report
+const Promise = require('bluebird')
+const util = require('./util')
 
 let options = {
 	port: mqttConfig.port,
@@ -45,12 +47,12 @@ class MqttHandler {
     this.mqttClient.on('message', function (topic, msg) {
       let message = msg.toString()
       if(topic.includes('YESIO/UL'))
-        return handleUpload1(message)
+        return handleUpload1(topic,message)
       else if(topic.includes('GIOT-GW/UL'))
-          return handleUpload2(message)
+          return handleUpload2(topic,message)
         //For download message
       else if(topic.includes('YESIO/DL'))
-          return handleDownload(message)
+          return handleDownload(topic,message)
       else
           console.log('No handler for topic %s', topic)
     });
@@ -69,38 +71,41 @@ class MqttHandler {
 module.exports = MqttHandler;
 
 //"dlTopic": "YESIO/DL/CONTROLL",
-function handleDownload (msg) {  
+function handleDownload (topic,msg) {  
   let message = msg.toString()
   console.log('handleDownload: %s', message)
 }
 
 
 //"ulTopic1": "YESIO/UL/+",
-function handleUpload1 (msg) {  
+async function handleUpload1 (topic,msg) {  
   let message = msg.toString()
-  console.log('handleUpload1: %s', message)
+  console.log(' topic : %s \n message : %s',topic, message)
   let mObj = getJSONObj(message)
-  let result = saveMessage (mObj)
-  console.log(result)
+  let result = await saveMessage (mObj)
+  if(result.dataValues.id){
+    let date = new Date();
+    date.toLocaleString();
+    console.log(date +' -> Save message success')
+  }
 }
 
 //"ulTopic2": "GIOT-GW/UL/+"
-async function handleUpload2 (msg) {  
-  //let result = await setValue('test', '45678');
+async function handleUpload2 (topic,msg) {  
   //let test = await getValue('test');
   let message = msg.toString()
-  //console.log('handleUpload2: %s', message)
-  //console.log('getValue(key): %s', test)
+  let jsonObj = getJSONObj(message)
+  let mac=jsonObj.macAddr
+  let macStatus = await util.getValue('mac'+mac);
+  console.log('macStatus : %s', macStatus)
+  if(macStatus==null || macStatus == '0') {
+    console.log( '%s %s is not active, drop this message', getDatestring(),mac)
+    return;
+  }
 }
 
-async function saveMessage (jsonObj) {
-  let newReport = null
+function saveMessage (jsonObj) {
   try {
-      
-      
-      // console.log('jsonObj :')
-      // console.log(jsonObj)
-      
       jsonObj['type_id'] = parseInt(jsonObj.fport)
       delete jsonObj.fport
       jsonObj['extra'] = {}
@@ -112,10 +117,12 @@ async function saveMessage (jsonObj) {
       } 
       jsonObj.extra = JSON.stringify(jsonObj.extra)
       jsonObj.data = JSON.stringify(jsonObj.data)
-      jsonObj.recv = Sequelize.literal('CURRENT_TIMESTAMP')
-      console.log('save jsonObj :')
-      console.log(jsonObj)
-      return await Report.create(jsonObj)
+      //jsonObj.recv = Sequelize.literal('CURRENT_TIMESTAMP')
+      //console.log('save jsonObj :')
+      //console.log(jsonObj)
+      let result = Report.create(jsonObj)
+      return Promise.resolve(result)
+      //return await Report.create(jsonObj)
   } catch (error) {
       return error
   }
@@ -132,4 +139,9 @@ function getJSONObj(obj) {
       jsonObj = obj
   }
   return jsonObj
+}
+
+function getDatestring() {
+  let date = new Date()
+  return date.toLocaleDateString() + ' ' +date.toLocaleTimeString()
 }
