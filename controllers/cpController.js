@@ -7,6 +7,7 @@
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Cp = require('../db/models').Cp
+const Promise = require('bluebird')
 
 module.exports = {
     async index(req, res, next) {
@@ -15,11 +16,7 @@ module.exports = {
         if(verify.role_id !=1){
            return resResources.notAllowed(res)
         }
-        let cps = await Cp.findAll({
-          where: {
-              "id":verify.cp_id
-          }
-        })
+        let cps = await Promise.resolve(Cp.findAll())
         resResources.getDtaSuccess(res, cps)
       } catch (e) {
         resResources.catchError(res, e.message)
@@ -53,7 +50,7 @@ module.exports = {
         "updated_at": new Date()
       }
       
-      let newCp = await Cp.create(obj)
+      let newCp = await Promise.resolve(Cp.create(obj))
       resResources.doSuccess(res, 'Create company success')
     } catch (e) {
       resResources.catchError(res, e.message)
@@ -70,11 +67,11 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
 
-      let cps = await Cp.findAll({
+      let cps = await Promise.resolve(Cp.findAll({
         where: {
             "id":id
         }
-      })
+      }))
       if(cps.length>0)
         resResources.getDtaSuccess(res, cps[0])
       else 
@@ -97,13 +94,12 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
-      if(verify.role_id >2 && verify.cp_id != id){
+      /*if(verify.role_id >2 && verify.cp_id != id){
         return resResources.notAllowed(res)
       } else if(verify.role_id == 2 && verify.cp_id != id){
         //Admin cnahge other cp's data is not allowed
         return resResources.notAllowed(res)
-      } 
+      }*/ 
       let cp_name = req.body.cp_name || req.query.cp_name
       let phone = req.body.phone || req.query.phone
       let address = req.body.address || req.query.address
@@ -118,12 +114,12 @@ module.exports = {
       }
       attributes['updated_at'] = new Date()
       
-      await Cp.update(
+      await Promise.resolve(Cp.update(
         /* set attributes' value */
         attributes,
         /* condition for find*/
         { where: { "id": id }}
-      )
+      ))
       resResources.doSuccess(res, 'Update success')
     } catch (e) {
       resResources.catchError(res, e.message)
@@ -141,16 +137,15 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
       //Only administrators and super administrators have the right
       if(verify.role_id > 1 || id == 1){ //Can't delete main company
         return resResources.notAllowed(res)
       }
-      result = await Cp.destroy({
+      result = await Promise.resolve(Cp.destroy({
         where: {
             "id":id
         }
-      })
+      }))
       
       if(result == 0){
         resResources.notAllowed(res)
