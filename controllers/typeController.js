@@ -15,7 +15,7 @@ module.exports = {
         if(verify.role_id != 1){
           return resResources.notAllowed(res)
         }
-        let types = await Type.findAll()
+        let types = await Promise.resolve(Type.findAll())
         resResources.getDtaSuccess(res, types)
       } catch (e) {
         resResources.catchError(res, e.message)
@@ -57,7 +57,7 @@ module.exports = {
       if(image_url != undefined)
         obj['image_url'] = image_url
       
-      let newTYpe = await Type.create(obj)
+      let newTYpe = await Promise.resolve(Type.create(obj))
       console.log(typeof newTYpe)
       resResources.doSuccess(res, 'Create type success')
     } catch (e) {
@@ -75,11 +75,11 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let types = await Type.findAll({
+      let types = await Promise.resolve(Type.findAll({
         where: {
             "id":id
         }
-      })
+      }))
       if(types.length>0)
         resResources.getDtaSuccess(res, types[0])
       else 
@@ -121,12 +121,12 @@ module.exports = {
         attributes['rules'] = rules
       attributes['updated_at'] = new Date()
       
-      await Type.update(
+      await Promise.resolve(Type.update(
         /* set attributes' value */
         attributes,
         /* condition for find*/
         { where: { "id": id }}
-      )
+      ))
       resResources.doSuccess(res, 'Update success')
     } catch (e) {
       resResources.catchError(res, e.message)
@@ -144,11 +144,11 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      result = await Type.destroy({
+      result = await Promise.resolve(Type.destroy({
         where: {
             "id":id
         }
-      })
+      }))
       
       if(result == 0){
         resResources.notAllowed(res)
