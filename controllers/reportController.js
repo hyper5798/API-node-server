@@ -6,7 +6,7 @@
 
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
-const Report = require('../db/models').Report
+const Cp = require('../db/models').Cp
 
 module.exports = {
     async index(req, res, next) {
@@ -15,12 +15,12 @@ module.exports = {
         if(verify.role_id !=1){
            return resResources.notAllowed(res)
         }
-        let reports = await Report.findAll({
+        let cps = await Cp.findAll({
           where: {
               "id":verify.cp_id
           }
         })
-        resResources.getDtaSuccess(res, reports)
+        resResources.getDtaSuccess(res, cps)
       } catch (e) {
         resResources.catchError(res, e.message)
       }
