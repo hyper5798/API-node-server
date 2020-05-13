@@ -15,11 +15,11 @@ module.exports = {
         /*if(verify.role_id != 1){
           return resResources.notAllowed(res)
         }*/
-        let devices = await Device.findAll({
+        let devices = await Promise.resolve(Device.findAll({
           where: {
               "cp_id":verify.cp_id
           }
-        })
+        }))
         resResources.getDtaSuccess(res, devices)
       } catch (e) {
         resResources.catchError(res, e.message)
@@ -63,7 +63,7 @@ module.exports = {
       if(image_url != undefined)
         obj['image_url'] = image_url
       
-      let newTYpe = await Device.create(obj)
+      let newTYpe = await Promise.resolve(Device.create(obj))
       console.log(typeof newTYpe)
       resResources.doSuccess(res, 'Create device success')
     } catch (e) {
@@ -81,12 +81,12 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let devices = await Device.findAll({
+      let devices = await Promise.resolve(Device.findAll({
         where: {
             "id":id,
             "cp_id": verify.cp_id
         }
-      })
+      }))
       if(devices.length>0)
         resResources.getDtaSuccess(res, devices[0])
       else 
@@ -107,7 +107,7 @@ module.exports = {
      
       let id = req.params.id
 
-      let devices = await Device.findAll({where: {"id":id}})
+      let devices = await Promise.resolve(Device.findAll({where: {"id":id}}))
       if(devices.length == 0)
         return resResources.notFound(res)
 
@@ -146,12 +146,12 @@ module.exports = {
 
       attributes['updated_at'] = new Date()
       
-      await Device.update(
+      await Promise.resolve(Device.update(
         /* set attributes' value */
         attributes,
         /* condition for find*/
         { where: { "id": id} }
-      )
+      ))
       
       resResources.doSuccess(res, 'Update success')
     } catch (e) {
@@ -179,11 +179,11 @@ module.exports = {
         })
       else
         //Super administrator can delete all of devices
-        result = await Device.destroy({
+        result = await Promise.resolve(Device.destroy({
           where: {
               "id":id
           }
-        })
+        }))
       
       if(result == 0){
         resResources.notAllowed(res)
