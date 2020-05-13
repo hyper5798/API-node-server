@@ -15,7 +15,7 @@ module.exports = {
         if(verify.role_id != 1){
           return resResources.notAllowed(res)
         }
-        let roles = await Role.findAll()
+        let roles = await Promise.resolve(Role.findAll())
         resResources.getDtaSuccess(res, roles)
       } catch (e) {
         resResources.catchError(res, e.message)
@@ -52,7 +52,7 @@ module.exports = {
         "updated_at": new Date()
       }
       
-      let newRole = await Role.create(obj)
+      let newRole = await Promise.resolve(Role.create(obj))
       resResources.doSuccess(res, 'Create role success')
     } catch (e) {
       resResources.catchError(res, e.message)
@@ -110,12 +110,12 @@ module.exports = {
         attributes['dataset'] = dataset
       attributes['updated_at'] = new Date()
       
-      await Role.update(
+      await Promise.resolve(Role.update(
         /* set attributes' value */
         attributes,
         /* condition for find*/
         { where: { "id": id }}
-      )
+      ))
       resResources.doSuccess(res, 'Update success')
     } catch (e) {
       resResources.catchError(res, e.message)
@@ -133,16 +133,15 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
       //Only administrators and super administrators have the right
       if(verify.role_id > 1 || id == 1){ //Can't delete main company
         return resResources.notAllowed(res)
       }
-      result = await Role.destroy({
+      result = Promise.resolve(await Role.destroy({
         where: {
             "id":id
         }
-      })
+      }))
       
       if(result == 0){
         resResources.notAllowed(res)
