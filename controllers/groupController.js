@@ -15,11 +15,11 @@ module.exports = {
         if(verify.role_id > 2){
           return resResources.notAllowed(res)
         }
-        let groups = await Group.findAll({
+        let groups = await Promise.resolve(Group.findAll({
           where: {
               "cp_id":verify.cp_id
           }
-        })
+        }))
         resResources.getDtaSuccess(res, groups)
       } catch (e) {
         resResources.catchError(res, e.message)
@@ -76,7 +76,7 @@ module.exports = {
           obj['devices'] = JSON.stringify(JSON.parse(devices))
       }
       
-      let newGroup = await Group.create(obj)
+      let newGroup = await Promise.resolve(Group.create(obj))
       console.log(typeof newGroup)
       resResources.doSuccess(res, 'Create group success')
     } catch (e) {
@@ -94,12 +94,12 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let groups = await Group.findAll({
+      let groups = await Promise.resolve(Group.findAll({
         where: {
             "id":id,
             "cp_id": verify.cp_id
         }
-      })
+      }))
       if(groups.length>0)
         resResources.getDtaSuccess(res, groups[0])
       else 
@@ -119,7 +119,7 @@ module.exports = {
      
       let id = req.params.id
 
-      let groups = await Group.findAll({where: {"id":id}})
+      let groups = await Promise.resolve(Group.findAll({where: {"id":id}}))
       if(groups.length == 0)
         return resResources.notFound(res)
 
@@ -163,12 +163,12 @@ module.exports = {
 
       attributes['updated_at'] = new Date()
       
-      await Group.update(
+      await Promise.resolve(Group.update(
         /* set attributes' value */
         attributes,
         /* condition for find*/
         { where: { "id": id} }
-      )
+      ))
       
       resResources.doSuccess(res, 'Update success')
     } catch (e) {
@@ -196,11 +196,11 @@ module.exports = {
         })
       else
         //Super administrator can delete all of groups
-        result = await Group.destroy({
+        result = await Promise.resolve(Group.destroy({
           where: {
               "id":id
           }
-        })
+        }))
       
       if(result == 0){
         resResources.notAllowed(res)
