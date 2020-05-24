@@ -2,7 +2,6 @@ const redis  = require('./redisClient')
 const Promise = require('bluebird')
 const Type = require('../db/models').Type
 const Device = require('../db/models').Device
-
 init()
 
 module.exports = {
@@ -14,7 +13,7 @@ module.exports = {
 
 async function init() {
   let clean =  await Promise.resolve(redis.flushallAsync())
-  console.log('init clean : '+ clean)
+  console.log('init clean redis: '+ clean)
  
   let types = await Promise.resolve(Type.findAll())
   let devices = await Promise.resolve(Device.findAll())
@@ -22,14 +21,16 @@ async function init() {
     for(let i=0; i<types.length;++i){
         let id = types[i].type_id
         //checkMap[id.toString()] = JSON.parse(types[i].rules)
-        //console.log('type'+id+' -> '+typeof types[i].rules)
+        if(debug)
+            console.log('type'+id+' -> '+typeof types[i].rules)
         await setValue('type'+id, types[i].rules);
     }
   }
   if(devices.length>0) {
     for(let i=0; i<devices.length;++i){
         let mac = devices[i].macAddr
-        console.log('mac'+mac+' -> '+typeof devices[i].status)
+        if(debug)
+            console.log('mac'+mac+' -> '+ devices[i].status)
         await setValue('mac'+mac, devices[i].status);
     }
   }

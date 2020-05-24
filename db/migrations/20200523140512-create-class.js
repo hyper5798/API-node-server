@@ -1,14 +1,14 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Groups', {
+    return queryInterface.createTable('Classes', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      group_name: {
+      class_name: {
         allowNull: false,
         type: Sequelize.STRING
       },
@@ -16,16 +16,16 @@ module.exports = {
         allowNull: false,
         type: Sequelize.INTEGER
       },
-      group_option: {
+      class_option: {
         allowNull: false,
         defaultValue: 1, //1:only member, 2:only device, 3:Both
         type: Sequelize.INTEGER
       },
       members: {
-        type: Sequelize.TEXT
+        type: Sequelize.TEXT('long')
       },
       devices: {
-        type: Sequelize.TEXT
+        type: Sequelize.TEXT('long')
       },
       created_at: {
         type: 'TIMESTAMP',
@@ -40,6 +40,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Groups');
+    return queryInterface.dropTable('Classes');
   }
 };

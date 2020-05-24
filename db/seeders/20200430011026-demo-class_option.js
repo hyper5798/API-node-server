@@ -2,17 +2,20 @@
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('Groups', [{
-      group_name: '養蜂班',
-      cp_id: 1,
-      group_option: 1,//only members
-      members: null,
-      devices: null,
+    return queryInterface.bulkInsert('Class_options', [{
+      option_name: '僅有組員',
+      created_at: new Date(),
+      updated_at: new Date()
+    },{
+      option_name: '僅有裝置',
+      created_at: new Date(),
+      updated_at: new Date()
+    },{
+      option_name: '有組員及裝置',
       created_at: new Date(),
       updated_at: new Date()
     }]);
   },
-
 
   down: (queryInterface, Sequelize) => {
     /*

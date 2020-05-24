@@ -1,14 +1,14 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Group_option = sequelize.define('Group_option', {
+  const Class_option = sequelize.define('Class_option', {
     option_name: DataTypes.STRING,
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE
   }, {
     timestamps: false
   });
-  Group_option.associate = function(models) {
+  Class_option.associate = function(models) {
     // associations can be defined here
   };
-  return Group_option;
+  return Class_option;
 };

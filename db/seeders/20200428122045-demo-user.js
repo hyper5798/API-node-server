@@ -1,11 +1,13 @@
 'use strict';
+const bcrypt = require('bcrypt')
+const saltRounds = 10
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.bulkInsert('Users', [{
       name: 'Manager',
-      email: 'check@example.com',
-      password: '$2y$10$Ag/eqqkUDkaW0hTqcFY/XucsoROHOOBvd1d4cByrz2MLXIFIMix5.',
+      email: 'admin@admin.com',
+      password: '$2y$10$G2ItdtEaiZAFEMjeueHEWes7f/1RvKZ7SAkdK7oU.dDBGpoGaMxvy',
       cp_id: 1,
       role_id: 1,
       email_verified_at: null,
@@ -15,8 +17,8 @@ module.exports = {
       updated_at: new Date()
     },{
       name: 'MIT',
-      email: 'test@example.com',
-      password: '$2y$10$Ag/eqqkUDkaW0hTqcFY/XucsoROHOOBvd1d4cByrz2MLXIFIMix5.',
+      email: 'admin2@admin.com',
+      password: '$2y$10$G2ItdtEaiZAFEMjeueHEWes7f/1RvKZ7SAkdK7oU.dDBGpoGaMxvy',
       cp_id: 1,
       role_id: 2,
       email_verified_at: null,

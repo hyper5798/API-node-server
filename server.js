@@ -12,10 +12,13 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
+const debug = false
+global.debug = debug
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
 const setCurrentUser = require('./middleware/setCurrentUser.js')
-const debug = true
+
+
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -80,25 +83,52 @@ module.exports = async function createServer () {
   app.use('/roles', require('./routes/roleRoute'))
   app.use('/types', require('./routes/typeRoute'))
   app.use('/devices', require('./routes/deviceRoute'))
-  app.use('/groups', require('./routes/groupRoute'))
+  app.use('/classes', require('./routes/classRoute'))
   //app.use('/reports', require('./routes/reportRoute'))
 
   const server = http.createServer(app).listen(app.get('port'), '0.0.0.0', () => {
     console.log("Server started at http://localhost:" + app.get('port') + "/")
   })
 
-  // Initialise the runtime with a server and settings
-  RED.init(server,setting);
+  //Websocket ------------------------------------------------------- start
+  const SocketServer = require('ws').Server
 
-  // Serve the editor UI from /red
-  app.use(setting.httpAdminRoot,RED.httpAdmin);
+  //將 express 交給 SocketServer 開啟 WebSocket 的服務
+  const wss = new SocketServer({ server })
 
-  // Serve the http nodes UI from /api
-  app.use(setting.httpNodeRoot,RED.httpNode);
+  wss.on('connection', ws => {
+    console.log('Client connected')
 
-  // Start the runtime
-  RED.start();
+    ws.on('message', data => {
+        //取得所有連接中的 client
+        let clients = wss.clients
 
+        //做迴圈，發送訊息至每個 client
+        clients.forEach(client => {
+            client.send(data)
+        })
+    })
+
+    ws.on('close', () => {
+        console.log('Close connected')
+    })
+})
+  //Websocket ------------------------------------------------------- end
+
+  if(debug) {
+    // Initialise the runtime with a server and settings
+    RED.init(server,setting);
+
+    // Serve the editor UI from /red
+    app.use(setting.httpAdminRoot,RED.httpAdmin);
+
+    // Serve the http nodes UI from /api
+    app.use(setting.httpNodeRoot,RED.httpNode);
+
+    // Start the runtime
+    RED.start();
+  }
+  
   // Create http server and attach express app on it
   return server
 
