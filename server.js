@@ -12,7 +12,7 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
-const debug = false
+const debug = true
 global.debug = debug
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
@@ -89,15 +89,16 @@ module.exports = async function createServer () {
   const server = http.createServer(app).listen(app.get('port'), '0.0.0.0', () => {
     console.log("Server started at http://localhost:" + app.get('port') + "/")
   })
-
+  
+  
   //Websocket ------------------------------------------------------- start
-  const SocketServer = require('ws').Server
+  /*const SocketServer = require('ws').Server
 
   //將 express 交給 SocketServer 開啟 WebSocket 的服務
   const wss = new SocketServer({ server })
 
   wss.on('connection', ws => {
-    console.log('Client connected')
+    console.log('Client connected :')
 
     ws.on('message', data => {
         //取得所有連接中的 client
@@ -112,8 +113,36 @@ module.exports = async function createServer () {
     ws.on('close', () => {
         console.log('Close connected')
     })
-})
-  //Websocket ------------------------------------------------------- end
+  })*/
+  //Socket.io ------------------------------------------------------- start
+  var io = require('socket.io').listen(server);
+
+  io.sockets.on('connection', function (socket) {
+    // mySocket = socket;
+    // socket.emit() ：向建立该连接的客户端广播
+    // socket.broadcast.emit() ：向除去建立该连接的客户端的所有客户端广播
+    // io.sockets.emit() ：向所有客户端广播，等同于上面两个的和
+    socket.emit('news', { hello: 'world' });
+
+    socket.on('web', function (data) {
+      console.log(data);
+      mqttClient.checkWSConnect();
+    });//send_switch_command
+
+    socket.on('mqtt_sub', function (data) {
+      console.log('mqtt_sub : ' + data);
+      socket.broadcast.emit('update_command_status', data);
+    });
+
+    socket.on('reply_command_status', function (data) {
+      console.log('reply_command_status' + JSON.stringify(data));  
+      socket.broadcast.emit('update_command_status', data);
+    });
+
+    socket.on('disconnect', function () {
+      console.log('???? socket disconnect id : ' + socket.id);
+    });
+  });
 
   if(debug) {
     // Initialise the runtime with a server and settings

@@ -22,7 +22,7 @@ async function init() {
         let id = types[i].type_id
         //checkMap[id.toString()] = JSON.parse(types[i].rules)
         if(debug)
-            console.log('type'+id+' -> '+typeof types[i].rules)
+            console.log('type'+id+' -> '+ types[i].rules)
         await setValue('type'+id, types[i].rules);
     }
   }

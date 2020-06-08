@@ -4,6 +4,25 @@ const Sequelize = require('sequelize')
 const Report = require('../db/models').Report
 const Promise = require('bluebird')
 const util = require('./util')
+const io = require('socket.io-client');
+const socket = io.connect('http://localhost:3000', {reconnect: true});
+
+socket.on('connect',function(){
+  socket.emit('mqtt_sub','**** mqtt_sub socket cient is ready');
+});
+
+socket.on('disconnect',function(){
+  console.log('mqtt handller websocket disconnct');
+  if (socket.connected === false ) {
+    //socket.close()
+    socket.open();
+  }
+});
+
+socket.on('news',function(m){
+  console.log('mqtt handller receve websocket :'+m);
+});
+
 
 let options = {
 	port: mqttConfig.port,
@@ -18,6 +37,15 @@ class MqttHandler {
     this.username = mqttConfig.name; // mqtt credentials if these are needed to connect
     this.password = mqttConfig.password;
   }
+
+  checkWSConnect() {
+    console.log('Check websocket connect :' + socket.connected);
+    if (socket.connected === false ) {
+      //socket.close()
+      socket.open();
+    }
+  }
+
    
   connect() {
     // Connect mqtt with credentials (in case of needed, otherwise we can omit 2nd param)
@@ -74,19 +102,28 @@ module.exports = MqttHandler;
 function handleDownload (topic,msg) {  
   let message = msg.toString()
   console.log('handleDownload: %s', message)
+  
 }
 
 
 //"ulTopic1": "YESIO/UL/+",
 async function handleUpload1 (topic,msg) {  
+  
   let message = msg.toString()
   console.log(' topic : %s \n message : %s',topic, message)
   let mObj = getJSONObj(message)
+  socket.emit('mqtt_sub',mObj);
   let result = await saveMessage (mObj)
   if(result.dataValues.id){
     let date = new Date();
     date.toLocaleString();
     console.log(date +' -> Save message success')
+    let report = await Report.findAll({
+      where: {
+          "id":result.dataValues.id
+      }
+    });
+    socket.emit('mqtt_sub',report[0]);
   }
 }
 
