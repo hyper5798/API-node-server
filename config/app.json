@@ -1,4 +1,6 @@
 {
     "secret": "iotsecret",
-    "token_expired": 24
+    "token_expired": 24,
+    "laravel_prifix": "laravel_database_"
+
 }

@@ -1,6 +1,6 @@
 {
     "port": 1883,
-    "host": "161.202.32.59",
+    "host": "45.80.153.45",
     "name": "yesio",
     "password": "yesio12345",
     "dlTopic": "YESIO/DL/CONTROLL",
