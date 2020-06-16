@@ -1,0 +1,15 @@
+# Logs
+npm-debug.log*
+
+# Dependency directories
+node_modules
+
+#config directory
+config
+
+# Optional npm cache directory
+.npm
+.vscode
+.nodered
+app.json
+

@@ -58,37 +58,15 @@ module.exports = {
    --undo
    npx sequelize-cli db:seed:undo
 
-* Node-red - Embedding into an existing app
- 
-// Create an Express app
-var app = express();
+* Docker 
+  1. 創建 docker build . -t docker-api
+  2. 安裝並執行 broker
+  3. 查詢 container id
+     $ docker ps
+  4. 進入容器中，請運行exec命令
+     $ docker exec -it <container id> /bin/bash
+  5. 更改 config/database.json
+     $ vi ../config/database.json
 
-// Add a simple route for static content served from 'public'
-app.use("/",express.static("public"));
-
-// Create a server
-var server = http.createServer(app);
-
-// Create the settings object - see default settings.js file for other options
-var settings = {
-    httpAdminRoot:"/red",
-    httpNodeRoot: "/api",
-    userDir:"/home/nol/.nodered/",
-    functionGlobalContext: { }    // enables global context
-};
-
-// Initialise the runtime with a server and settings
-RED.init(server,settings);
-
-// Serve the editor UI from /red
-app.use(settings.httpAdminRoot,RED.httpAdmin);
-
-// Serve the http nodes UI from /api
-app.use(settings.httpNodeRoot,RED.httpNode);
-
-server.listen(8000);
-
-// Start the runtime
-RED.start();
-
+     
 

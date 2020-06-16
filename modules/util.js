@@ -34,6 +34,7 @@ async function init() {
         await setValue('mac'+mac, devices[i].status);
     }
   }
+  setValue('laravel_database_mytest','12345678');
 }
 
 async function  setValue(key,value) {

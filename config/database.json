@@ -2,8 +2,8 @@
   "development": {
     "username": "admin",
     "password": "gemtek12345",
-    "database": "yesiodb",
-    "host": "127.0.0.1",
+    "database": "default",
+    "host": "172.22.0.4",
     "dialect": "mysql",
     "operatorsAliases": false
   },

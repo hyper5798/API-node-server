@@ -40,7 +40,7 @@ module.exports = async function createServer () {
   app.use(errorhandler())
 
   // Set express server port
-  app.set('port', process.env.PORT || 3000)
+  app.set('port', process.env.PORT || 3010)
   app.use(morgan('dev'))
   app.use(bodyParser.urlencoded({ extended: false, inflate: true }))
   app.use(bodyParser.json({ strict: true, inflate: true }))
