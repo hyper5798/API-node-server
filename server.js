@@ -17,6 +17,7 @@ global.debug = debug
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
 const setCurrentUser = require('./middleware/setCurrentUser.js')
+const appConfig = require('./config/app.json')
 
 
 
@@ -40,7 +41,7 @@ module.exports = async function createServer () {
   app.use(errorhandler())
 
   // Set express server port
-  app.set('port', process.env.PORT || 3010)
+  app.set('port', process.env.PORT || appConfig.port)
   app.use(morgan('dev'))
   app.use(bodyParser.urlencoded({ extended: false, inflate: true }))
   app.use(bodyParser.json({ strict: true, inflate: true }))

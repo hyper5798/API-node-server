@@ -5,7 +5,9 @@ const Report = require('../db/models').report
 const Promise = require('bluebird')
 const util = require('./util')
 const io = require('socket.io-client');
-const socket = io.connect('http://localhost:3000', {reconnect: true});
+const appConfig = require('../config/app.json')
+let wsUrl ='http://localhost:'+appConfig.port
+const socket = io.connect('wsUrl', {reconnect: true});
 
 socket.on('connect',function(){
   socket.emit('mqtt_sub','**** mqtt_sub socket cient is ready');

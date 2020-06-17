@@ -1,6 +1,6 @@
 {
     "secret": "iotsecret",
     "token_expired": 24,
-    "laravel_prifix": "laravel_database_"
-
+    "laravel_prifix": "laravel_database_",
+    "port": 3010
 }
