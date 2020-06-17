@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Type = sequelize.define('Type', {
+  const type = sequelize.define('type', {
     type_id: DataTypes.INTEGER,
     type_name: DataTypes.STRING,
     description: DataTypes.STRING,
@@ -8,11 +8,11 @@ module.exports = (sequelize, DataTypes) => {
     rules: DataTypes.TEXT,
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE
-  }, {
+  }, { 
     timestamps: false
   });
-  Type.associate = function(models) {
+  type.associate = function(models) {
     // associations can be defined here
   };
-  return Type;
+  return type;
 };

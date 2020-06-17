@@ -2,10 +2,9 @@
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('Cps', [{
+    return queryInterface.bulkInsert('cps', [{
       cp_name: 'YESIO',
       phone: '03-8572906',
-      address: '',
       created_at: new Date(),
       updated_at: new Date()
     }]);

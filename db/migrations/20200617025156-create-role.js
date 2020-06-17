@@ -1,47 +1,23 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Devices', {
+    return queryInterface.createTable('roles', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      device_name: {
-        allowNull: false,
-        type: Sequelize.STRING
-      },
-      macAddr: {
-        allowNull: false,
-        type: Sequelize.STRING
-      },
-      status: {
-        allowNull: false,
-        type: Sequelize.INTEGER,
-        defaultValue: 1
-      },
-      cp_id: {
-        allowNull: false,
-        type: Sequelize.INTEGER,
-        defaultValue: 1
-      },
-      user_id: {
+      role_id: {
         allowNull: false,
         type: Sequelize.INTEGER
       },
-      type_id: {
+      role_name: {
         allowNull: false,
-        type: Sequelize.INTEGER
-      },
-      network_id: {
-        type: Sequelize.INTEGER
-      },
-      description: {
         type: Sequelize.STRING
       },
-      image_url: {
-        type: Sequelize.STRING
+      dataset: {
+        type: Sequelize.INTEGER
       },
       created_at: {
         type: 'TIMESTAMP',
@@ -56,6 +32,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Devices');
+    return queryInterface.dropTable('roles');
   }
 };

@@ -6,7 +6,7 @@
 
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
-const Device = require('../db/models').Device
+const Device = require('../db/models').device
 
 module.exports = {
     async index(req, res, next) {

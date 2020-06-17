@@ -2,7 +2,7 @@
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('Class_options', [{
+    return queryInterface.bulkInsert('class_options', [{
       option_name: '僅有組員',
       created_at: new Date(),
       updated_at: new Date()

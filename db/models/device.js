@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Device = sequelize.define('Device', {
+  const device = sequelize.define('device', {
     device_name: DataTypes.STRING,
     macAddr: DataTypes.STRING,
     status: DataTypes.INTEGER,
@@ -12,11 +12,11 @@ module.exports = (sequelize, DataTypes) => {
     image_url: DataTypes.STRING,
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE
-  }, {
+  }, { 
     timestamps: false
   });
-  Device.associate = function(models) {
+  device.associate = function(models) {
     // associations can be defined here
   };
-  return Device;
+  return device;
 };

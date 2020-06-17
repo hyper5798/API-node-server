@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Class = sequelize.define('Class', {
+  const classes = sequelize.define('class', {
     class_name: DataTypes.STRING,
     cp_id: DataTypes.INTEGER,
     class_option: DataTypes.INTEGER,
@@ -8,11 +8,11 @@ module.exports = (sequelize, DataTypes) => {
     devices: DataTypes.TEXT,
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE
-  }, {
+  }, { 
     timestamps: false
   });
-  Class.associate = function(models) {
+  classes.associate = function(models) {
     // associations can be defined here
   };
-  return Class;
+  return classes;
 };

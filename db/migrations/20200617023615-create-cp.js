@@ -1,29 +1,29 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Reports', {
+    return queryInterface.createTable('cps', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      macAddr: {
+      cp_name: {
         allowNull: false,
         type: Sequelize.STRING
       },
-      type_id: {
-        allowNull: false,
-        type: Sequelize.INTEGER
+      phone: {
+        type: Sequelize.STRING
       },
-      data: {
-        allowNull: false,
-        type: Sequelize.TEXT
+      address: {
+        type: Sequelize.STRING
       },
-      extra: {
-        type: Sequelize.TEXT
+      created_at: {
+        type: 'TIMESTAMP',
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        allowNull: false
       },
-      recv: {
+      updated_at: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         allowNull: false
@@ -31,6 +31,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Reports');
+    return queryInterface.dropTable('cps');
   }
 };

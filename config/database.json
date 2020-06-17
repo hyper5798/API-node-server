@@ -1,9 +1,9 @@
 {
   "development": {
-    "username": "admin",
-    "password": "gemtek12345",
+    "username": "",
+    "password": "",
     "database": "default",
-    "host": "172.22.0.4",
+    "host": "localhost",
     "dialect": "mysql",
     "operatorsAliases": false
   },

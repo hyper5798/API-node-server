@@ -1,23 +1,29 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Class_options', {
+    return queryInterface.createTable('reports', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      option_name: {
+      macAddr: {
         allowNull: false,
         type: Sequelize.STRING
       },
-      created_at: {
-        type: 'TIMESTAMP',
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
-        allowNull: false
+      type_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER
       },
-      updated_at: {
+      data: {
+        allowNull: false,
+        type: Sequelize.TEXT
+      },
+      extra: {
+        type: Sequelize.TEXT
+      },
+      recv: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         allowNull: false
@@ -25,6 +31,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Class-options');
+    return queryInterface.dropTable('reports');
   }
 };

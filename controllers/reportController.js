@@ -6,7 +6,7 @@
 
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
-const Cp = require('../db/models').Cp
+const Cp = require('../db/models').cp
 
 module.exports = {
     async index(req, res, next) {

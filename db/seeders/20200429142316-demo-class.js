@@ -2,7 +2,7 @@
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('Classes', [{
+    return queryInterface.bulkInsert('classes', [{
       class_name: '養蜂班',
       cp_id: 1,
       class_option: 1,//only members

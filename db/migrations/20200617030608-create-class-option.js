@@ -1,23 +1,16 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Cps', {
+    return queryInterface.createTable('class_options', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      cp_name: {
-        type: Sequelize.STRING,
-      },
-      phone: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      address: {
-        type: Sequelize.STRING,
-        allowNull: true
+      option_name: {
+        allowNull: false,
+        type: Sequelize.STRING
       },
       created_at: {
         type: 'TIMESTAMP',
@@ -32,6 +25,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Cps');
+    return queryInterface.dropTable('class_options');
   }
 };

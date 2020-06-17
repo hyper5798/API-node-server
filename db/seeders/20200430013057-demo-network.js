@@ -2,7 +2,7 @@
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('Networks', [{
+    return queryInterface.bulkInsert('networks', [{
       network_name: 'Wifi',
       created_at: new Date(),
       updated_at: new Date()

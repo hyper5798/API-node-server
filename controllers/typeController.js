@@ -6,7 +6,7 @@
 
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
-const Type = require('../db/models').Type
+const Type = require('../db/models').type
 
 module.exports = {
     async index(req, res, next) {

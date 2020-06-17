@@ -1,31 +1,30 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Classes', {
+    return queryInterface.createTable('types', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      class_name: {
+      type_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER
+      },
+      type_name: {
         allowNull: false,
         type: Sequelize.STRING
       },
-      cp_id: {
+      description: {
+        type: Sequelize.STRING
+      },
+      image_url: {
+        type: Sequelize.STRING
+      },
+      rules: {
         allowNull: false,
-        type: Sequelize.INTEGER
-      },
-      class_option: {
-        allowNull: false,
-        defaultValue: 1, //1:only member, 2:only device, 3:Both
-        type: Sequelize.INTEGER
-      },
-      members: {
-        type: Sequelize.TEXT('long')
-      },
-      devices: {
-        type: Sequelize.TEXT('long')
+        type: Sequelize.TEXT
       },
       created_at: {
         type: 'TIMESTAMP',
@@ -40,6 +39,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Classes');
+    return queryInterface.dropTable('types');
   }
 };

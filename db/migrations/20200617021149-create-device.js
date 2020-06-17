@@ -1,45 +1,48 @@
 'use strict';
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.createTable('Users', {
+    return queryInterface.createTable('devices', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      name: {
-        type: Sequelize.STRING,
+      device_name: {
         allowNull: false,
-      },
-      email: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      password: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      cp_id: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        defaultValue: 1
-      },
-      role_id: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        defaultValue: 4
-      },
-      email_verified_at: {
-        type: Sequelize.DATE
-      },
-      remember_token: {
         type: Sequelize.STRING
       },
-      active: {
-        type: Sequelize.INTEGER,
+      macAddr: {
         allowNull: false,
+        type: Sequelize.STRING
+      },
+      status: {
+        allowNull: false,
+        type: Sequelize.INTEGER,
         defaultValue: 1
+      },
+      cp_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER,
+        defaultValue: 1
+      },
+      user_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER
+      },
+      type_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER
+      },
+      network_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER
+      },
+      description: {
+        type: Sequelize.STRING
+      },
+      image_url: {
+        type: Sequelize.STRING
       },
       created_at: {
         type: 'TIMESTAMP',
@@ -54,6 +57,6 @@ module.exports = {
     });
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.dropTable('Users');
+    return queryInterface.dropTable('devices');
   }
 };

@@ -1,7 +1,7 @@
 const redis  = require('./redisClient')
 const Promise = require('bluebird')
-const Type = require('../db/models').Type
-const Device = require('../db/models').Device
+const Type = require('../db/models').type
+const Device = require('../db/models').device
 init()
 
 module.exports = {
@@ -23,7 +23,7 @@ async function init() {
         //checkMap[id.toString()] = JSON.parse(types[i].rules)
         if(debug)
             console.log('type'+id+' -> '+ types[i].rules)
-        await setValue('type'+id, types[i].rules);
+        //await setValue('type'+id, types[i].rules);
     }
   }
   if(devices.length>0) {
@@ -31,7 +31,7 @@ async function init() {
         let mac = devices[i].macAddr
         if(debug)
             console.log('mac'+mac+' -> '+ devices[i].status)
-        await setValue('mac'+mac, devices[i].status);
+        //await setValue('mac'+mac, devices[i].status);
     }
   }
   setValue('laravel_database_mytest','12345678');

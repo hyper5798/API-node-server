@@ -1,14 +1,14 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Network = sequelize.define('Network', {
+  const network = sequelize.define('network', {
     network_name: DataTypes.STRING,
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE
-  }, {
+  }, { 
     timestamps: false
   });
-  Network.associate = function(models) {
+  network.associate = function(models) {
     // associations can be defined here
   };
-  return Network;
+  return network;
 };

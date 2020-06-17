@@ -60,7 +60,7 @@ module.exports = {
 
 * Docker 
   1. 創建 docker build . -t docker-api
-  2. 安裝並執行 broker
+  2. 安裝並執行 docker run -p 3010:3010 -d docker-api
   3. 查詢 container id
      $ docker ps
   4. 進入容器中，請運行exec命令

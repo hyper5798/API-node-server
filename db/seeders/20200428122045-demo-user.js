@@ -4,7 +4,7 @@ const saltRounds = 10
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('Users', [{
+    return queryInterface.bulkInsert('users', [{
       name: 'Manager',
       email: 'admin@admin.com',
       password: '$2y$10$G2ItdtEaiZAFEMjeueHEWes7f/1RvKZ7SAkdK7oU.dDBGpoGaMxvy',
