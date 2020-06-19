@@ -12,14 +12,15 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
-const debug = false
+const debug = true
 global.debug = debug
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
 const setCurrentUser = require('./middleware/setCurrentUser.js')
 const appConfig = require('./config/app.json')
-
-
+const resResources = require('./lib/resResources')
+const Command = require('./db/models').command
+const mqttConfig = require('./config/mqtt.json')
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -73,9 +74,19 @@ module.exports = async function createServer () {
     app.use(setCurrentUser)
   
   //MQTT publish
-  app.post("/send-mqtt", function(req, res) {
-    mqttClient.sendMessage(req.body.message);
-    res.status(200).send("Message sent to mqtt");
+  app.post("/send_mqtt", function(req, res) {
+    let topic = req.body.topic || req.query.topic
+    let message = req.body.message || req.query.message
+    if(message == undefined)
+      return resResources.missPara(res)
+    if(topic == undefined || topic == null)
+      topic = mqttConfig.dlTopic//Default topic
+    mqttClient.sendMessage(topic, message);
+    return resResources.doSuccess(res, "Message sent to mqtt")
+  });
+
+  app.post("/send_command", function(req, res) {
+    return sendCommand(req, res, mqttClient)
   });
 
   //app.use('/', require('./routes/mySubApp'))
@@ -163,4 +174,32 @@ module.exports = async function createServer () {
   // Create http server and attach express app on it
   return server
 
+}
+
+async function sendCommand(req, res, mqttClient) {
+  let type_id = req.body.type_id || req.query.type_id
+  let macAddr = req.body.macAddr || req.query.macAddr
+  let cmd_name = req.body.cmd_name || req.query.cmd_name
+  if(type_id == undefined || macAddr == undefined || cmd_name == undefined)
+        return resResources.missPara(res)
+  let topic = req.body.topic || req.query.topic
+  if(topic == undefined || topic == null)
+    topic = mqttConfig.dlTopic//Default topic
+  let Commands = await Promise.resolve(Command.findAll({
+    where: {
+        "type_id": type_id,
+        "cmd_name": cmd_name
+    }
+  }))
+  if(Commands.length>0){
+    console.log(Commands[0]['command'])
+    let cmd = Commands[0]['command']
+    if(cmd == null)
+      return resResources.notFound(res)
+    let message = JSON.stringify({"macAddr": macAddr, "cmd": cmd})
+    mqttClient.sendMessage(topic, message);
+    return resResources.doSuccess(res, "Message sent to mqtt")
+  }
+  else
+    return resResources.notFound(res)
 }

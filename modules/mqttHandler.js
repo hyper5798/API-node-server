@@ -93,8 +93,8 @@ class MqttHandler {
   }
 
   // Sends a mqtt message to topic: mytopic
-  sendMessage(message) {
-    this.mqttClient.publish('mytopic', message);
+  sendMessage(topic, message) {
+    this.mqttClient.publish(topic, message);
   }
 }
 
