@@ -12,7 +12,7 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
-const debug = true
+const debug = false
 global.debug = debug
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
@@ -85,6 +85,7 @@ module.exports = async function createServer () {
   app.use('/types', require('./routes/typeRoute'))
   app.use('/devices', require('./routes/deviceRoute'))
   app.use('/classes', require('./routes/classRoute'))
+  app.use('/commands', require('./routes/commandRoute'))
   //app.use('/reports', require('./routes/reportRoute'))
 
   const server = http.createServer(app).listen(app.get('port'), '0.0.0.0', () => {
