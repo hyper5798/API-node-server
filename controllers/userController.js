@@ -9,6 +9,7 @@ const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 
 module.exports = {
+    
     async index(req, res, next) {
       try {
         
@@ -22,7 +23,16 @@ module.exports = {
         resResources.catchError(res, e.message)
       }
     },
-
+  
+  /**
+   * 用户信息登录
+   * @route POST /users/login
+   * @group user - Operations about user
+   * @param {string} email.query.required - 请输入合法邮箱
+   * @param {string} password.query.required - 请输入密码
+   * @returns {object} 200 - An array of user info
+   * @returns {Error}  default - Unexpected error
+   */
   async login(req, res, next) {
     try {
       //Get input data
