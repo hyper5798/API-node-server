@@ -20,10 +20,12 @@ async function init() {
   if(types.length>0) {
     for(let i=0; i<types.length;++i){
         let id = types[i].type_id
+        let key = 'type'+id
+        let value = JSON.stringify(types[i].rules)
         //checkMap[id.toString()] = JSON.parse(types[i].rules)
         if(debug)
-            console.log('type'+id+' -> '+ types[i].rules)
-        //await setValue('type'+id, types[i].rules);
+            console.log(key + ' -> '+ value)
+        await setValue(key, value);
     }
   }
   if(devices.length>0) {
@@ -31,10 +33,10 @@ async function init() {
         let mac = devices[i].macAddr
         if(debug)
             console.log('mac'+mac+' -> '+ devices[i].status)
-        //await setValue('mac'+mac, devices[i].status);
+        await setValue('mac'+mac, devices[i].status);
     }
   }
-  setValue('laravel_database_mytest','12345678');
+  await setValue('laravel_database_mytest','12345678');
 }
 
 async function  setValue(key,value) {

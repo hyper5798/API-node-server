@@ -11,5 +11,4 @@ config
 .npm
 .vscode
 .nodered
-app.json
 
