@@ -1,8 +1,11 @@
-const redis  = require('./redisClient')
+
 const Promise = require('bluebird')
 const Type = require('../db/models').type
 const Device = require('../db/models').device
-init()
+const redisHandler  = require('./redisHandler')
+let redisClient = new redisHandler(0);
+redisClient.connect();
+setTimeout(init, 1500);
 
 module.exports = {
   init,
@@ -12,10 +15,11 @@ module.exports = {
 }
 
 async function init() {
-  let clean =  await Promise.resolve(redis.flushallAsync())
+
+  let clean = await redisClient.flush()
   console.log('init clean redis: '+ clean)
  
-  let types = await Promise.resolve(Type.findAll())
+  /*let types = await Promise.resolve(Type.findAll())
   let devices = await Promise.resolve(Device.findAll())
   if(types.length>0) {
     for(let i=0; i<types.length;++i){
@@ -26,6 +30,7 @@ async function init() {
         if(debug)
             console.log(key + ' -> '+ value)
         await setValue(key, value);
+        
     }
   }
   if(devices.length>0) {
@@ -33,22 +38,21 @@ async function init() {
         let mac = devices[i].macAddr
         if(debug)
             console.log('mac'+mac+' -> '+ devices[i].status)
-        await setValue('mac'+mac, devices[i].status);
+        setValue('mac'+mac, devices[i].status)
     }
-  }
-  await setValue('laravel_database_mytest','12345678');
+  }*/
+  //await setValue('laravel_database_mytest','12345678');
+  //let test = await getValue('macfcf5c4536490');
+  //console.log('init clean test: '+ test)
 }
 
-async function  setValue(key,value) {
-  let result =  await redis.setAsync(key, value);
-  return Promise.resolve(result)
+function  setValue(key,value) {
+  redisClient.setValue(key, value);
 };
 
-
-async function  getValue(key) {
-  let value = await redis.getAsync(key);
-  return Promise.resolve(value)
-};
+function  getValue(key) {
+  return redisClient.getValue(key);
+}
 
 async function parsingMsg(obj) {
     let fport = obj.fport

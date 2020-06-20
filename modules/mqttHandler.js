@@ -71,20 +71,9 @@ class MqttHandler {
     });
 
     // mqtt subscriptions
-    //this.mqttClient.subscribe('mytopic', {qos: 0});
-
-    // When a message arrives, console.log it
+    // When a message arrives, check and switch it
     this.mqttClient.on('message', function (topic, msg) {
-      let message = msg.toString()
-      if(topic.includes('YESIO/UL'))
-        return handleUpload1(topic,message)
-      else if(topic.includes('GIOT-GW/UL'))
-          return handleUpload2(topic,message)
-        //For download message
-      else if(topic.includes('YESIO/DL'))
-          return handleDownload(topic,message)
-      else
-          console.log('No handler for topic %s', topic)
+      swithObj(topic, msg)
     });
 
     this.mqttClient.on('close', () => {
@@ -107,42 +96,56 @@ function handleDownload (topic,msg) {
   
 }
 
-
-//"ulTopic1": "YESIO/UL/+",
-async function handleUpload1 (topic,msg) {  
-  
+//check mac and switch by topic
+async function swithObj (topic, msg) {  
   let message = msg.toString()
-  console.log(' topic : %s \n message : %s',topic, message)
-  let mObj = getJSONObj(message)
-  socket.emit('mqtt_sub',mObj);
+  let obj = getJSONObj(message)
+  let mac = obj.macAddr
+  let value = await util.getValue(mac)
+  if( value === null) {
+    const Device = require('../db/models').device
+    let device = await Promise.resolve(Device.findOne({where: {"macAddr":mac}}))
+    if(device) {
+      util.setValue(mac, device.status)
+    } else {
+      console.log('???? '+ getDatestring() + ' drop mac : ' + mac);
+      return null
+    }
+  }
+  if(topic.includes('YESIO/UL'))
+    handleUpload1(obj)
+  else if(topic.includes('GIOT-GW/UL'))
+    handleUpload2(obj)
+  else if(topic.includes('YESIO/DL'))
+    handleDownload(obj)
+  else
+    console.log('No handler for topic %s', topic)
+}
+
+
+//"ulTopic1": "YESIO/UL/+", for escape romm
+async function handleUpload1 (mObj) { 
+
   let result = await saveMessage (mObj)
   if(result.dataValues.id){
-    let date = new Date();
-    date.toLocaleString();
-    console.log(date +' -> Save message success')
-    let report = await Report.findAll({
+    console.log(getDatestring() +' -> Save message success')
+    let report = await Report.findOne({
       where: {
           "id":result.dataValues.id
       }
     });
-    socket.emit('mqtt_sub',report[0]);
+    let key = 'esc_' + report.macAddr
+    let value = getRecttring(report.recv)
+    //For record the device triger time
+    util.setValue(key, value)
+    //For websocket to webui
+    socket.emit('mqtt_sub',report);
   }
 }
 
 //"ulTopic2": "GIOT-GW/UL/+"
-async function handleUpload2 (topic,msg) {  
-  //let test = await getValue('test');
-  let message = msg.toString()
-  let jsonObj = getJSONObj(message)
-  //Filter mac ---------------------------------------------------------- start
-  let mac=jsonObj.macAddr
-  let macStatus = await util.getValue('mac'+mac);
-  //console.log('macStatus : %s', macStatus)
-  if(macStatus==null || macStatus == '0') {
-    console.log( '%s %s is not active, drop this message', getDatestring(),mac)
-    return;
-  }
-  //Parsing message ------------------------------------------------------ start
+async function handleUpload2 (jsonObj) {  
+
   let parsingObj = await util.parsingMsg(jsonObj)
   console.log('topic : %s',topic)
   console.log(parsingObj)
@@ -156,7 +159,7 @@ async function handleUpload2 (topic,msg) {
   }
 }
 
-function saveMessage (jsonObj) {
+async function saveMessage (jsonObj) {
   try {
       jsonObj['type_id'] = parseInt(jsonObj.fport)
       delete jsonObj.fport
@@ -169,12 +172,10 @@ function saveMessage (jsonObj) {
       } 
       jsonObj.extra = JSON.stringify(jsonObj.extra)
       jsonObj.data = JSON.stringify(jsonObj.data)
-      //jsonObj.recv = Sequelize.literal('CURRENT_TIMESTAMP')
+      jsonObj.recv = new Date()
       //console.log('save jsonObj :')
       //console.log(jsonObj)
-      let result = Report.create(jsonObj)
-      return Promise.resolve(result)
-      //return await Report.create(jsonObj)
+      return await Promise.resolve(Report.create(jsonObj))
   } catch (error) {
       return error
   }
@@ -195,5 +196,10 @@ function getJSONObj(obj) {
 
 function getDatestring() {
   let date = new Date()
+  return date.toLocaleDateString() + ' ' +date.toLocaleTimeString()
+}
+
+function getRecttring(time) {
+  let date = new Date(time)
   return date.toLocaleDateString() + ' ' +date.toLocaleTimeString()
 }

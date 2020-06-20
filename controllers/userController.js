@@ -25,12 +25,12 @@ module.exports = {
     },
   
   /**
-   * 用户信息登录
+   * 用户登入取得token
    * @route POST /users/login
    * @group user - Operations about user
-   * @param {string} email.query.required - 请输入合法邮箱
-   * @param {string} password.query.required - 请输入密码
-   * @returns {object} 200 - An array of user info
+   * @param {string} email.query.required - 請輸入合法郵箱
+   * @param {string} password.query.required - 請輸入密碼
+   * @returns {object} 200 - A JSON of user info
    * @returns {Error}  default - Unexpected error
    */
   async login(req, res, next) {

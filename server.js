@@ -41,7 +41,7 @@ let options = {
       title: 'Swagger',
       version: '1.0.0'
     },
-    host: 'localhost:3010',
+    host: 'localhost:'+appConfig.port,
     basePath: '/',
     produces: ['application/json', 'application/xml'],
     schemes: ['http', 'https'],
