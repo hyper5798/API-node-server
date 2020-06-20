@@ -7,7 +7,7 @@ const util = require('./util')
 const io = require('socket.io-client');
 const appConfig = require('../config/app.json')
 let wsUrl ='http://localhost:'+appConfig.port
-const socket = io.connect('wsUrl', {reconnect: true});
+const socket = io.connect(wsUrl, {reconnect: true});
 
 socket.on('connect',function(){
   socket.emit('mqtt_sub','**** mqtt_sub socket cient is ready');
@@ -125,7 +125,7 @@ async function swithObj (topic, msg) {
 
 //"ulTopic1": "YESIO/UL/+", for escape romm
 async function handleUpload1 (mObj) { 
-
+  
   let result = await saveMessage (mObj)
   if(result.dataValues.id){
     console.log(getDatestring() +' -> Save message success')
@@ -134,12 +134,16 @@ async function handleUpload1 (mObj) {
           "id":result.dataValues.id
       }
     });
-    let key = 'esc_' + report.macAddr
+    //For websocket to webui
+    socket.emit('mqtt_sub',report);
+    if(typeof report.data === 'string')
+      report.data = JSON.parse(report.data)
+    let key = report.macAddr+'_'+report.data.status
     let value = getRecttring(report.recv)
     //For record the device triger time
     util.setValue(key, value)
-    //For websocket to webui
-    socket.emit('mqtt_sub',report);
+    
+    
   }
 }
 

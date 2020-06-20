@@ -33,8 +33,12 @@ class redisHandler {
 
   getValue(key) {
     key = appConfig.laravel_prifix+key
-    let value = this.redisClient.getAsync(key);
+    let value = this.redisClient.getAsync(key)
     return Promise.resolve(value)
+  }
+
+  remove(key) {
+    return Promise.resolve(this.redisClient.del(key))
   }
 
   flush() {

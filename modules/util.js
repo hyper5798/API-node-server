@@ -11,6 +11,7 @@ module.exports = {
   init,
   setValue,
   getValue,
+  remove,
   parsingMsg
 }
 
@@ -47,11 +48,15 @@ async function init() {
 }
 
 function  setValue(key,value) {
-  redisClient.setValue(key, value);
+  redisClient.setValue(key, value)
 };
 
 function  getValue(key) {
-  return redisClient.getValue(key);
+  return redisClient.getValue(key)
+}
+
+function remove(key) {
+  redisClient.remove(key)
 }
 
 async function parsingMsg(obj) {
