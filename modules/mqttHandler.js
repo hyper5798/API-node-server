@@ -92,7 +92,7 @@ module.exports = MqttHandler;
 //"dlTopic": "YESIO/DL/CONTROLL",
 function handleDownload (topic,msg) {  
   let message = msg.toString()
-  console.log('handleDownload: %s', message)
+  console.log('handleDownload: %s', message )
   
 }
 
@@ -117,7 +117,7 @@ async function swithObj (topic, msg) {
   else if(topic.includes('GIOT-GW/UL'))
     handleUpload2(obj)
   else if(topic.includes('YESIO/DL'))
-    handleDownload(obj)
+    handleDownload(topic, msg)
   else
     console.log('No handler for topic %s', topic)
 }

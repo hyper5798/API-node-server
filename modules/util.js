@@ -12,7 +12,9 @@ module.exports = {
   setValue,
   getValue,
   remove,
-  parsingMsg
+  parsingMsg,
+  encode_base64,
+  decode_base64
 }
 
 async function init() {
@@ -140,4 +142,12 @@ async function parsingMsg(obj) {
     // eval(diff) = 2000/100 = 20
     
     return eval(diff)
+  }
+
+  function decode_base64(str) {
+    return new Buffer(str, 'base64').toString();
+  }
+
+  function encode_base64(str) {
+    return new Buffer(str).toString('base64');
   }

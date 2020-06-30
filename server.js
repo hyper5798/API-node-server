@@ -22,7 +22,6 @@ const resResources = require('./lib/resResources')
 const Command = require('./db/models').command
 const mqttConfig = require('./config/mqtt.json')
 
-
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
 
@@ -80,7 +79,7 @@ module.exports = async function createServer () {
   app.use(bodyParser.json({ strict: true, inflate: true }))
   app.use(responsePoweredBy("@JASON_HUANG"))
   app.use(responseTime())
-  app.use(cors());
+  app.use(cors())
 
   app.all('/*', function(req, res, next) {
     // CORS headers
@@ -88,12 +87,16 @@ module.exports = async function createServer () {
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
     // Set custom headers for CORS
     res.header('Access-Control-Allow-Headers', 'Content-type,Accept,X-Access-Token,X-Key');
-    next();
-  });
+    next()
+  })
 
   app.get('/', function(req, res) {
     res.json({ message: 'MQTT Client and API!' });
-  });
+  })
+
+  app.get("/send_control", function(req, res) {
+    return sendControl(req, res, mqttClient)
+  })
 
   /**
    * Routes for the application
@@ -234,4 +237,39 @@ async function sendCommand(req, res, mqttClient) {
   }
   else
     return resResources.notFound(res)
+}
+
+async function sendControl(req, res, mqttClient) {
+  let topic = req.params.topic || req.query.topic
+  let key = req.params.key || req.query.key
+  if(key == undefined)
+    return resResources.missPara(res)
+  if(topic == undefined || topic == null)
+    topic = mqttConfig.dlTopic//Default topic
+  let str = decode_base64(key)
+  let arr = str.split(':')
+  //arr[0] : mac, arr[1]: command id
+  if(arr.length != 2)
+    return resResources.missPara(res)
+   
+  let Commands = await Promise.resolve(Command.findAll({
+    where: {
+        "id": arr[1],
+    }
+  }))
+  if(Commands.length>0){
+    console.log(Commands[0]['command'])
+    let cmd = Commands[0]['command']
+    if(cmd == null)
+      return resResources.notFound(res)
+    let message = JSON.stringify({"macAddr": arr[0], "cmd": cmd})
+    mqttClient.sendMessage(topic, message);
+    return resResources.doSuccess(res, "Control sent to mqtt")
+  }
+  else
+    return resResources.notFound(res)
+}
+
+function decode_base64(str) {
+  return new Buffer(str, 'base64').toString();
 }
