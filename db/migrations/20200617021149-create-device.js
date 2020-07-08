@@ -38,6 +38,12 @@ module.exports = {
         allowNull: false,
         type: Sequelize.INTEGER
       },
+      setting_id: {
+        type: Sequelize.INTEGER
+      },
+      make_command: {
+        type: Sequelize.INTEGER
+      },
       description: {
         type: Sequelize.STRING
       },

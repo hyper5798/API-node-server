@@ -10,6 +10,8 @@ module.exports = {
       user_id: 2,
       type_id: 99,
       network_id:3,
+      setting_id: null,
+      make_command: 0,
       description: null,
       image_url: null,
       created_at: new Date(),

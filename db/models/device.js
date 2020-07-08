@@ -8,6 +8,8 @@ module.exports = (sequelize, DataTypes) => {
     user_id: DataTypes.INTEGER,
     type_id: DataTypes.INTEGER,
     network_id: DataTypes.INTEGER,
+    setting_id: DataTypes.INTEGER,
+    make_command: DataTypes.INTEGER,
     description: DataTypes.STRING,
     image_url: DataTypes.STRING,
     created_at: DataTypes.DATE,
