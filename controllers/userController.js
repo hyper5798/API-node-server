@@ -75,10 +75,11 @@ module.exports = {
   async register(req, res, next) {
     try {
       let token = authResources.getInputToken(req)
-      if(token === undefined) {
-        return resResources.noAccess(res)
+      let verify = null;
+      if(token) {
+        verify = await authResources.tokenVerify(token)
       }
-      let verify = await authResources.tokenVerify(token)
+      
       //Get input data
       let name = req.body.name || req.query.name
       let email = req.body.email || req.query.email
@@ -91,6 +92,12 @@ module.exports = {
       {
         return resResources.missPara(res)
       }
+
+      let hasUser = await userResources.getUserByEmail(email)
+      if(hasUser.length>0) {
+        return resResources.notAllowed(res, 'Not allowed, has same email!')
+      }
+
       let hashCode = await authResources.getHashCode(password)
       let myHash = hashCode.replace('$2b$', '$2y$');
       let obj = {
@@ -104,7 +111,7 @@ module.exports = {
         updated_at: new Date()
       }
       //For admin to add user
-      if(verify !== undefined) {
+      if(verify !== null ) {
         if(verify.role_id > 1) {//Except super admin
           obj['cp_id'] = verify.cp_id//Local admin add same cp user
         } else if(verify.role_id == 1) {//super admin
@@ -142,8 +149,7 @@ module.exports = {
       let id = req.params.id
       if(typeof(id) === 'string')
         id = parseInt(id)
-
-      let users = await userResources.getUserById(id)
+      
       if(users.length>0)
         resResources.getDtaSuccess(res, users[0])
       else 
