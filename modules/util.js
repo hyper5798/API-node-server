@@ -2,6 +2,7 @@
 const Promise = require('bluebird')
 const Type = require('../db/models').type
 const Device = require('../db/models').device
+const Product = require('../db/models').product
 const redisHandler  = require('./redisHandler')
 let redisClient = new redisHandler(0);
 redisClient.connect();
@@ -11,6 +12,8 @@ module.exports = {
   init,
   setValue,
   getValue,
+  hsetValue,
+  hgetValue,
   remove,
   parsingMsg,
   encode_base64,
@@ -47,6 +50,14 @@ async function init() {
   //await setValue('laravel_database_mytest','12345678');
   //let test = await getValue('macfcf5c4536490');
   //console.log('init clean test: '+ test)
+  let products = await Promise.resolve(Product.findAll())
+  if(products.length>0) {
+    for(let i=0; i<products.length;++i){
+        let id = products[i].id
+        let mac = products[i].macAddr
+        await hsetValue('product', mac, id);
+    }
+  }
 }
 
 function  setValue(key,value) {
@@ -55,6 +66,14 @@ function  setValue(key,value) {
 
 function  getValue(key) {
   return redisClient.getValue(key)
+}
+
+function  hsetValue(key, field, value) {
+  redisClient.hsetValue(key, field, value)
+};
+
+function  hgetValue(key, field) {
+  return redisClient.hgetValue(key, field)
 }
 
 function remove(key) {
