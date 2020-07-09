@@ -7,6 +7,9 @@
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Device = require('../db/models').device
+const Product = require('../db/models').product
+const redisHandler  = require('../modules/redisHandler')
+
 
 module.exports = {
     async index(req, res, next) {
@@ -36,12 +39,18 @@ module.exports = {
       let description = req.body.description || req.query.description
       let image_url = req.body.image_url || req.query.image_url
       let type_id = req.body.type_id || req.query.type_id
-      if(verify.role_id == 11){
+      if(verify.role_id == 9){
+        type_id = 9//For escape device
+      } else if(verify.role_id == 11){
         type_id = 11//For controller user
       }
       //Check input data
       if(mac == undefined || type_id == undefined)
          return resResources.missPara(res)
+
+      if(await verifyMac(mac) == false) {
+        return resResources.notFound(res,'This mac is not yesio product')
+      }
 
       if(device_name == undefined)
         device_name = mac
@@ -50,12 +59,14 @@ module.exports = {
         type_id = parseInt(type_id)
      
       let obj = {
-        "mac": mac,
+        "macAddr": mac,
         "device_name": device_name,
         "status": 1,
         "cp_id": verify.cp_id,
         "user_id": verify.id,
         "type_id": type_id,
+        "network_id": 1,
+        "make_command":false,
         "created_at": new Date(),
         "updated_at": new Date()
       }
@@ -66,7 +77,7 @@ module.exports = {
       
       let newTYpe = await Promise.resolve(Device.create(obj))
       console.log(typeof newTYpe)
-      resResources.doSuccess(res, 'Create device success')
+      resResources.doSuccess(res, 'Binding device success')
     } catch (e) {
       resResources.catchError(res, e.message)
     }
@@ -194,5 +205,28 @@ module.exports = {
     } catch (e) {
       resResources.catchError(res, e.message)
     }
+  }
+}
+
+async function verifyMac(mac) {
+  const redisClient = new redisHandler(0)
+  redisClient.connect();
+  let deviceId = await redisClient.hgetValue('product', mac)
+  let product = null
+  if(deviceId === undefined || deviceId === null) {
+    //product = await Product.findAll()
+    product = await Product.findOne({
+      where: { "macAddr": mac }, // where 條件
+      //attribute: []  //指定回傳欄位
+    })
+    if(product== null)
+      return false
+    else {
+      redisClient.hsetValue('product',mac, product.id)
+      return true
+    }
+      
+  } else {
+    return true
   }
 }
