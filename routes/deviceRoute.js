@@ -14,7 +14,7 @@ const deviceRoute = express.Router()
 
 deviceRoute.get('/', deviceController.index)
 
-deviceRoute.post('/create', deviceController.create)
+deviceRoute.post('/binding', deviceController.binding)
 deviceRoute.get('/:id', deviceController.show)
 deviceRoute.put('/:id', deviceController.update)
 deviceRoute.delete('/:id', deviceController.destroy)

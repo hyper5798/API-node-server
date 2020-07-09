@@ -26,18 +26,19 @@ module.exports = {
       }
     },
 
-  async create(req, res, next) {
+  async binding(req, res, next) {
     try {
       //Get input data
       let verify = req.user
-      /*if(verify.role_id != 1){
-        return resResources.notAllowed(res)
-      }*/
+      
       let mac = req.body.mac || req.query.mac
       let device_name = req.body.device_name || req.query.device_name
       let description = req.body.description || req.query.description
       let image_url = req.body.image_url || req.query.image_url
       let type_id = req.body.type_id || req.query.type_id
+      if(verify.role_id == 11){
+        type_id = 11//For controller user
+      }
       //Check input data
       if(mac == undefined || type_id == undefined)
          return resResources.missPara(res)
