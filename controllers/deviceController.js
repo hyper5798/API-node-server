@@ -47,10 +47,15 @@ module.exports = {
       //Check input data
       if(mac == undefined || type_id == undefined)
          return resResources.missPara(res)
-
+      //Check device mac is belong of yesio or not?
       if(await verifyMac(mac) == false) {
         return resResources.notFound(res,'This mac is not yesio product')
       }
+      //Check the mac is exist in binding list or not?
+      if(verifyBinding(mac) == true) {
+        return resResources.notAllowed(res,'This mac is bound')
+      }
+      
 
       if(device_name == undefined)
         device_name = mac
@@ -229,4 +234,16 @@ async function verifyMac(mac) {
   } else {
     return true
   }
+}
+
+function verifyBinding(mac) {
+  let device = Promise.resolve(Device.findOne({
+    where: { "macAddr": mac }, // where 條件
+      //attribute: []  //指定回傳欄位
+    }))
+  if(device== null)
+    return false
+  else {
+    return true
+  }  
 }
