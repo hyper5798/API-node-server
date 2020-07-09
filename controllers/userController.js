@@ -104,7 +104,7 @@ module.exports = {
         name: name,
         email: email,
         password: myHash,
-        role_id: 9,
+        role_id: 11,
         cp_id: 1,
         active: 1,
         created_at: new Date(),
