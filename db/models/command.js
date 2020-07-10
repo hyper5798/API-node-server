@@ -2,6 +2,7 @@
 module.exports = (sequelize, DataTypes) => {
   const command = sequelize.define('command', {
     type_id: DataTypes.INTEGER,
+    device_id: DataTypes.INTEGER,
     cmd_name: DataTypes.STRING,
     command: DataTypes.STRING,
     created_at: DataTypes.DATE,

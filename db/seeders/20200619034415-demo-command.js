@@ -4,6 +4,7 @@ module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.bulkInsert('commands', [{
       type_id: '22',
+      device_id: null,
       cmd_name: '馬達開',
       command: 'fc000102030405060708',
       created_at: new Date(),

@@ -12,6 +12,9 @@ module.exports = {
         allowNull: false,
         type: Sequelize.INTEGER
       },
+      device_id: {
+        type: Sequelize.INTEGER
+      },
       cmd_name: {
         allowNull: false,
         type: Sequelize.STRING
