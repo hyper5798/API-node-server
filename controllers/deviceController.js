@@ -8,26 +8,39 @@ const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Device = require('../db/models').device
 const Product = require('../db/models').product
+const Promise = require('bluebird')
 const redisHandler  = require('../modules/redisHandler')
 
 
 module.exports = {
-    async index(req, res, next) {
-      try {
-        let verify = req.user
-        /*if(verify.role_id != 1){
-          return resResources.notAllowed(res)
-        }*/
-        let devices = await Promise.resolve(Device.findAll({
-          where: {
-              "cp_id":verify.cp_id
-          }
-        }))
-        resResources.getDtaSuccess(res, devices)
-      } catch (e) {
-        resResources.catchError(res, e.message)
+  async index(req, res, next) {
+    try {
+      let verify = req.user
+
+      let obj = {}
+      let devices = [];
+      if(verify.role_id == 1) {//Super Admin
+        let cpId = req.body.cp_id || req.query.cp_id
+        if(cpId == undefined || cpId == null)
+          cpId = verify.cp_id
+          obj.cp_id = cpId
+      } if(verify.role_id == 2) {//Local Admin
+        obj.cp_id = verify.cp_id
+      } if(verify.role_id > 2) {//Local Admin
+        obj.cp_id = verify.cp_id
+        obj.user_id = verify.id 
       }
-    },
+      devices = await Promise.resolve(Device.findAll(
+        {
+          where: obj,
+          attributes: ['id','device_name','macAddr','make_command']
+        }))
+        
+      resResources.getDtaSuccess(res, devices)
+    } catch (e) {
+      resResources.catchError(res, e.message)
+    }
+  },
 
   async binding(req, res, next) {
     try {
@@ -49,10 +62,11 @@ module.exports = {
          return resResources.missPara(res)
       //Check device mac is belong of yesio or not?
       if(await verifyMac(mac) == false) {
-        return resResources.notFound(res,'This mac is not yesio product')
+        return resResources.notFound(res,'This mac is not found in product list')
       }
       //Check the mac is exist in binding list or not?
-      if(verifyBinding(mac) == true) {
+      let device = await getBindingDevice(mac)
+      if(device) {
         return resResources.notAllowed(res,'This mac is bound')
       }
       
@@ -236,14 +250,9 @@ async function verifyMac(mac) {
   }
 }
 
-function verifyBinding(mac) {
-  let device = Promise.resolve(Device.findOne({
+function getBindingDevice(mac) {
+  return Promise.resolve(Device.findOne({
     where: { "macAddr": mac }, // where 條件
       //attribute: []  //指定回傳欄位
     }))
-  if(device== null)
-    return false
-  else {
-    return true
-  }  
 }
