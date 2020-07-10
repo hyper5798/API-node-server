@@ -33,7 +33,7 @@ module.exports = {
       devices = await Promise.resolve(Device.findAll(
         {
           where: obj,
-          attributes: ['id','device_name','macAddr','make_command']
+          attributes: ['id','type_id','device_name','macAddr','make_command']
         }))
         
       resResources.getDtaSuccess(res, devices)
