@@ -7,28 +7,46 @@
 //const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Command = require('../db/models').command
+const Device = require('../db/models').device
 
 module.exports = {
     async index(req, res, next) {
       try {
         let verify = req.user
-        if(verify.role_id != 1){
-          return resResources.notAllowed(res)
+        let type_id =  req.query.type_id
+        let mac =  req.query.mac
+        let device_id = null
+        if(mac == undefined )
+        {
+          return resResources.missPara(res)
         }
-        let type_id = req.body.type_id || req.query.type_id
+        
         if(type_id != undefined || type_id != null){
-          if(typeof type_id == 'string')
-            type_id = parseInt(type_id)
-          let Commands = await Promise.resolve(Command.findAll({
-            where: {
-                "type_id":type_id
-            }
-          }))
-          resResources.getDtaSuccess(res, Commands)
-          return
+          if(typeof type_id === 'string')
+            type_id = parseInt(type_id, 10)
+        } else {
+          type_id = 11
         }
-        let Commands = await Promise.resolve(Command.findAll())
-        resResources.getDtaSuccess(res, Commands)
+
+        let device = await Device.findOne({
+          where: { "macAddr": mac }, // where 條件
+          //attribute: []  //指定回傳欄位
+        })
+        
+        if(device) {
+          device_id = device.id
+        }
+
+        let Commands = await Promise.resolve(Command.findAll({
+          where: {
+              "type_id":type_id
+          },
+          attributes: ['id', 'device_id', 'cmd_name']
+        }))  
+
+        let commandKeys = getKeyList(Commands, device_id, mac)
+        
+        resResources.getDtaSuccess(res, commandKeys)
       } catch (e) {
         resResources.catchError(res, e.message)
       }
@@ -42,6 +60,7 @@ module.exports = {
         return resResources.notAllowed(res)
       }
       let type_id = req.body.type_id || req.query.type_id
+      let device_id = req.body.device_id || req.query.device_id
       let cmd_name = req.body.cmd_name || req.query.cmd_name
       let command = req.body.command || req.query.command
       //Check input data
@@ -56,6 +75,7 @@ module.exports = {
       let obj = {
         "type_id": type_id,
         "cmd_name": cmd_name,
+        "device_id": device_id,
         "command": command,
         "created_at": new Date(),
         "updated_at": new Date()
@@ -165,4 +185,33 @@ module.exports = {
       resResources.catchError(res, e.message)
     }
   }
+}
+
+function getKeyList(arr, target, mac) {
+  let data = {common:[],userdefined:[]}
+  
+  for(let i=0; i < arr.length; i++) {
+    let command = JSON.parse(JSON.stringify(arr[i]))
+    command.ctlKey = getKey(mac, command.id)
+    
+    if(command.device_id == null) {
+      delete command.device_id
+      data.common.push(command)
+    } else if(target && target === command.device_id) {
+      delete command.device_id
+      data.userdefined.push(command)
+    }
+  }
+  return data;
+}
+
+function getKey(mac, cid) {
+  const url = 'http://appserver.yesio.net:8080/send_control?key='
+  let secret = mac +':'+ cid;
+  let tmp = encode_base64(secret);
+  return (url+tmp);
+}
+
+function encode_base64(str) {
+  return new Buffer(str).toString('base64');
 }
