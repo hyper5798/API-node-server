@@ -18,5 +18,6 @@ deviceRoute.post('/binding', deviceController.binding)
 deviceRoute.get('/:id', deviceController.show)
 deviceRoute.put('/:id', deviceController.update)
 deviceRoute.delete('/:id', deviceController.destroy)
+deviceRoute.post('/verify', deviceController.verify)
 
 module.exports = deviceRoute

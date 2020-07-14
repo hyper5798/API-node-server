@@ -8,6 +8,7 @@ const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Device = require('../db/models').device
 const Product = require('../db/models').product
+const User = require('../db/models').user
 const Promise = require('bluebird')
 const redisHandler  = require('../modules/redisHandler')
 
@@ -67,10 +68,13 @@ module.exports = {
       //Check the mac is exist in binding list or not?
       let device = await getBindingDevice(mac)
       if(device) {
-        return resResources.notAllowed(res,'This mac is bound')
+        let user = await Promise.resolve(User.findOne({
+          where: { "id": 4 }, // where 條件
+          attribute: ['email','created_at']  //指定回傳欄位
+        }))
+        return resResources.notAllowed(res,'This mac is bound', user)
       }
       
-
       if(device_name == undefined)
         device_name = mac
 
@@ -97,6 +101,37 @@ module.exports = {
       let newTYpe = await Promise.resolve(Device.create(obj))
       console.log(typeof newTYpe)
       resResources.doSuccess(res, 'Binding device success')
+    } catch (e) {
+      resResources.catchError(res, e.message)
+    }
+  },
+
+  async verify(req, res, next) {
+    try {
+      //Get input data
+      let verify = req.user
+      
+      let mac = req.body.mac || req.query.mac
+      
+      //Check input data
+      if(mac == undefined)
+         return resResources.missPara(res)
+      //Check device mac is belong of yesio or not?
+      if(await verifyMac(mac) == false) {
+        return resResources.notFound(res,'This mac is not found in product list')
+      }
+      //Check the mac is exist in binding list or not?
+      let device = await getBindingDevice(mac)
+      
+      if(device) {
+        let user = await Promise.resolve(User.findOne({
+          where: { "id": device.user_id }, 
+          attributes: ['email','created_at'] 
+        }))
+        return resResources.notAllowed(res,'This mac is bound', user)
+      }
+      
+      resResources.doSuccess(res, 'This Mac can be bound')
     } catch (e) {
       resResources.catchError(res, e.message)
     }
