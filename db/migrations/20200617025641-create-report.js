@@ -23,6 +23,9 @@ module.exports = {
       extra: {
         type: Sequelize.TEXT
       },
+      app_id: {
+        type: Sequelize.STRING
+      },
       recv: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),

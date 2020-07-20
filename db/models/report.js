@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
     type_id: DataTypes.INTEGER,
     data: DataTypes.TEXT,
     extra: DataTypes.TEXT,
+    app_id:DataTypes.INTEGER,
     recv: DataTypes.DATE
   }, { 
     timestamps: false
