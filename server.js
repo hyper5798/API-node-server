@@ -12,10 +12,11 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
-const debug = false
+const debug = true
 global.debug = debug
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
+const reportController = require('./controllers/reportController')
 const setCurrentUser = require('./middleware/setCurrentUser.js')
 const appConfig = require('./config/app.json')
 const resResources = require('./lib/resResources')
@@ -97,6 +98,9 @@ module.exports = async function createServer () {
   app.get("/send_control", function(req, res) {
     return sendControl(req, res, mqttClient)
   })
+
+  app.get('/reports/write', reportController.write)
+  app.get('/reports/read', reportController.read)
 
   /**
    * Routes for the application

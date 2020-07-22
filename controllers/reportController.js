@@ -7,6 +7,9 @@
 const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Cp = require('../db/models').cp
+const App = require('../db/models').app
+const Report = require('../db/models').report
+const Promise = require('bluebird')
 
 module.exports = {
     async index(req, res, next) {
@@ -15,7 +18,7 @@ module.exports = {
         if(verify.role_id !=1){
            return resResources.notAllowed(res)
         }
-        let cps = await Cp.findAll({
+        let reports = await Report .findAll({
           where: {
               "id":verify.cp_id
           }
@@ -160,5 +163,109 @@ module.exports = {
     } catch (e) {
       resResources.catchError(res, e.message)
     }
-  }
+  },
+
+  async write(req, res, next) {
+    try {
+      //Get key and id
+      let api_key = req.query.api_key
+      let app_id = getAppId(api_key) 
+      //Get app by parse id
+      let app = await Promise.resolve(App.findOne({where: {"id":app_id}}))
+      if(api_key !== app.api_key) {
+        return resResources.notAllowed(res)
+      }
+      app.key_label = JSON.parse(app.key_label)
+      //Get app labels
+      let keys = Object.keys(app.key_label)
+      //console.log(keys);
+      let obj = {
+        "macAddr": app.macAddr,
+        "app_id": app_id,
+        "created_at": new Date(),
+        "updated_at": new Date()
+      }
+      let list = {}
+      /*for(let i=0;i<8; i++) {
+        let target = 'key' + (i+1)
+        list[target] = req.query[target]
+      }*/
+      for(let i=0;i<keys.length; i++) {
+        let key = keys[i];
+        if(req.query[key])
+          obj[key] = parseInt(req.query[key]) 
+        else
+          obj[key] = null
+      }
+
+      console.log(obj);
+      let newReport = await Report.create(obj)
+      
+      resResources.doSuccess(res, 'Create report success')
+      
+    } catch (e) {
+      resResources.catchError(res, e.message)
+    }
+  },
+
+  async read(req, res, next) {
+    try {
+      //Get key and id
+      let api_key = req.query.api_key
+      let app_id = getAppId(api_key) 
+      let limit = req.query.result
+      let offset = req.query.page
+      //Get app by parse id
+      let app = await Promise.resolve(App.findOne({
+        where: {
+          "id":app_id
+        }
+      }))
+      if(api_key !== app.api_key) {
+        return resResources.notAllowed(res)
+      }
+      let label = JSON.parse(app.key_label)
+      let keys = Object.keys(label)
+      let arr1 = ['recv'];
+      let arr2 = arr1.concat(keys)
+      let options = {
+        where: {"app_id":app_id, "macAddr":app.macAddr},
+        attributes:arr2
+      }
+      if(limit)
+        options.limit = parseInt(limit) 
+      if(offset) {
+        options.offset = (parseInt(offset) - 1 ) * options.limit
+      }
+        
+      let reports = await Promise.resolve(Report.findAll(options));
+      let ch = {'id': app.id, 'name':app.name}
+      
+      for(let i=0;i<keys.length;i++) {
+        let key = keys[i]
+        ch[key] = label[key]
+      }
+      let result = {"app":ch, "reports": reports}
+
+
+     
+      resResources.getDtaSuccess(res, result)
+    } catch (e) {
+      resResources.catchError(res, e.message)
+    }
+  },
+}
+
+function decode_base64(str) {
+  return new Buffer(str, 'base64').toString();
+}
+
+function encode_base64(str) {
+  return new Buffer(str).toString('base64');
+}
+
+function getAppId(api_key) {
+  let test = decode_base64(api_key)
+  let arr = test.split('.')
+  return parseInt(arr[1])
 }

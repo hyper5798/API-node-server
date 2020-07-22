@@ -13,7 +13,30 @@ module.exports = {
         type: Sequelize.STRING
       },
       type_id: {
-        allowNull: false,
+        type: Sequelize.INTEGER
+      },
+      key1: {
+        type: Sequelize.INTEGER
+      },
+      key2: {
+        type: Sequelize.INTEGER
+      },
+      key3: {
+        type: Sequelize.INTEGER
+      },
+      key4: {
+        type: Sequelize.INTEGER
+      },
+      key5: {
+        type: Sequelize.INTEGER
+      },
+      key6: {
+        type: Sequelize.INTEGER
+      },
+      key7: {
+        type: Sequelize.INTEGER
+      },
+      key8: {
         type: Sequelize.INTEGER
       },
       data: {
