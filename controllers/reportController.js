@@ -170,6 +170,8 @@ module.exports = {
       //Get key and id
       let api_key = req.query.api_key
       let app_id = getAppId(api_key) 
+      if(!app_id)
+        return resResources.notAllowed(res)
       //Get app by parse id
       let app = await Promise.resolve(App.findOne({where: {"id":app_id}}))
       if(api_key !== app.api_key) {
@@ -213,6 +215,8 @@ module.exports = {
       //Get key and id
       let api_key = req.query.api_key
       let app_id = getAppId(api_key) 
+      if(!app_id)
+        return resResources.notAllowed(res)
       let limit = req.query.result
       let offset = req.query.page
       //Get app by parse id
@@ -221,6 +225,9 @@ module.exports = {
           "id":app_id
         }
       }))
+      if(api_key !== app.api_key) {
+        return resResources.notAllowed(res)
+      }
       if(api_key !== app.api_key) {
         return resResources.notAllowed(res)
       }
@@ -267,5 +274,8 @@ function encode_base64(str) {
 function getAppId(api_key) {
   let test = decode_base64(api_key)
   let arr = test.split('.')
+  if(arr.length <2) {
+    return null
+  } 
   return parseInt(arr[1])
 }
