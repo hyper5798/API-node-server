@@ -25,21 +25,27 @@ async function init() {
   let clean = await redisClient.flush()
   console.log('init clean redis: '+ clean)
  
-  /*let types = await Promise.resolve(Type.findAll())
-  let devices = await Promise.resolve(Device.findAll())
+  let types = await Promise.resolve(Type.findAll())
+  //let devices = await Promise.resolve(Device.findAll())
   if(types.length>0) {
     for(let i=0; i<types.length;++i){
         let id = types[i].type_id
         let key = 'type'+id
-        let value = JSON.stringify(types[i].rules)
-        //checkMap[id.toString()] = JSON.parse(types[i].rules)
-        if(debug)
-            console.log(key + ' -> '+ value)
-        await setValue(key, value);
-        
+        let fields = types[i].fields
+        if(typeof fields === 'object') {
+          fields = JSON.stringify(fields)
+        }
+        let rules = types[i].rules
+        if(typeof rules === 'object') {
+          rules = JSON.stringify(rules)
+        }
+            
+        //await setValue(key, value);
+        hsetValue(key, 'fieids', fields);
+        hsetValue(key, 'rules', rules);
     }
   }
-  if(devices.length>0) {
+  /*if(devices.length>0) {
     for(let i=0; i<devices.length;++i){
         let mac = devices[i].macAddr
         if(debug)
@@ -50,14 +56,15 @@ async function init() {
   //await setValue('laravel_database_mytest','12345678');
   //let test = await getValue('macfcf5c4536490');
   //console.log('init clean test: '+ test)
-  let products = await Promise.resolve(Product.findAll())
+  //Jason mark for binding device is not often performed
+  /*let products = await Promise.resolve(Product.findAll())
   if(products.length>0) {
     for(let i=0; i<products.length;++i){
         let id = products[i].id
         let mac = products[i].macAddr
         await hsetValue('product', mac, id);
     }
-  }
+  }*/
 }
 
 function  setValue(key,value) {
@@ -102,27 +109,30 @@ async function parsingMsg(obj) {
     //Parse data
     if(obj.fport){
         let mType = 'type'+ obj.fport
-        let mapStr = await getValue(mType)
+        //let mapStr = await getValue(mType)
+        let mapStr = await hgetValue(mType, 'rules')
         console.log(mapStr)
-            if(mapStr) {
-                let map = JSON.parse(mapStr)
-                let mInfo = getTypeData(mData,map)
+        if(mapStr) {
+            let map = JSON.parse(mapStr)
+            let mInfo = getTypeData(mData,map)
+            
+            if(mInfo){
+                //let msg = {macAddr: mMac, data: mData, extra: mExtra, fport: obj.fport};
+                let msg = {macAddr: mMac, extra: mExtra, fport: obj.fport}
                 
-                if(mInfo){
-                    let msg = {macAddr: mMac, data: mData, extra: mExtra, fport: obj.fport};
-                    if(obj.time){
-                      msg.recv = obj.time
-                    }
-                    // console.log('**** '+msg.recv +' mac:'+msg.mac+' => data:'+msg.data+'\nfport:'+mExtra.fport+' info:'+JSON.stringify(mInfo));
-                    msg.data=mInfo
-                  
-                    return Promise.resolve(msg);
-                } else {
-                    return Promise.resolve(null)
+                if(obj.time){
+                  msg.recv = obj.time
                 }
+                // console.log('**** '+msg.recv +' mac:'+msg.mac+' => data:'+msg.data+'\nfport:'+mExtra.fport+' info:'+JSON.stringify(mInfo));
+                msg.data=mInfo
+              
+                return Promise.resolve(msg);
             } else {
                 return Promise.resolve(null)
             }
+        } else {
+            return Promise.resolve(null)
+        }
     } else {
         return Promise.resolve(null)
     }

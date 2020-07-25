@@ -10,7 +10,7 @@ const Device = require('../db/models').device
 const Product = require('../db/models').product
 const User = require('../db/models').user
 const Promise = require('bluebird')
-const redisHandler  = require('../modules/redisHandler')
+//const redisHandler  = require('../modules/redisHandler')
 
 
 module.exports = {
@@ -263,8 +263,21 @@ module.exports = {
 }
 
 async function verifyMac(mac) {
+  let product = await Product.findOne({
+    where: { "macAddr": mac }, // where 條件
+  })
+  if(product== null)
+    return false
+  else {
+    return true
+  }
+}
+
+/*Jason mark for binding device is not often performed
+async function verifyMac(mac) {
   const redisClient = new redisHandler(0)
   redisClient.connect();
+  
   let deviceId = await redisClient.hgetValue('product', mac)
   let product = null
   if(deviceId === undefined || deviceId === null) {
@@ -283,7 +296,7 @@ async function verifyMac(mac) {
   } else {
     return true
   }
-}
+}*/
 
 function getBindingDevice(mac) {
   return Promise.resolve(Device.findOne({
