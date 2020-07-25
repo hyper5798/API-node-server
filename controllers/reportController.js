@@ -100,7 +100,6 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
       if(verify.role_id >2 && verify.cp_id != id){
         return resResources.notAllowed(res)
       } else if(verify.role_id == 2 && verify.cp_id != id){
@@ -144,7 +143,6 @@ module.exports = {
       if(typeof(id) === 'string')
         id = parseInt(id)
       
-      let verify = await authResources.tokenVerify(token)
       //Only administrators and super administrators have the right
       if(verify.role_id > 1 || id == 1){ //Can't delete main company
         return resResources.notAllowed(res)
