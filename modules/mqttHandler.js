@@ -106,7 +106,7 @@ async function swithObj (topic, msg) {
     const Device = require('../db/models').device
     let device = await Promise.resolve(Device.findOne({where: {"macAddr":mac}}))
     if(device) {
-      util.setValue(mac, device.status)
+      //util.setValue(mac, device.status)
     } else {
       console.log('???? '+ getDatestring() + ' drop mac : ' + mac);
       return null
@@ -125,8 +125,11 @@ async function swithObj (topic, msg) {
 
 //"ulTopic1": "YESIO/UL/+", for escape romm
 async function handleUpload1 (mObj) { 
-  
+
   let result = await saveMessage (mObj)
+
+  if(result.dataValues.type_id != 99) return;
+
   if(result.dataValues.id){
     console.log(getDatestring() +' -> Save message success')
     let report = await Report.findOne({
@@ -138,12 +141,18 @@ async function handleUpload1 (mObj) {
     socket.emit('mqtt_sub',report);
     if(typeof report.data === 'string')
       report.data = JSON.parse(report.data)
-    let key = report.macAddr+'_'+report.data.status
+    let mHash = 'escape'
+    let key = report.macAddr
+    if(report.key1 == 1) 
+      key = key + '_start'
+    if(report.key1 == 2) 
+      key = key + '_end'
+    if(report.key1 == 3) 
+      key = key + '_pass'
+  
     let value = getRecttring(report.recv)
     //For record the device triger time
-    util.setValue(key, value)
-    
-    
+    util.hsetValue(mHash, key, value)
   }
 }
 
@@ -151,7 +160,7 @@ async function handleUpload1 (mObj) {
 async function handleUpload2 (jsonObj) {  
 
   let parsingObj = await util.parsingMsg(jsonObj)
-  console.log('topic : %s',topic)
+  //console.log('topic : %s',topic)
   console.log(parsingObj)
   if(parsingObj == null) {
     console.log( '%s %s is no type (%s) parsing, drop this message', getDatestring(),mac, jsonObj.fport)
@@ -175,8 +184,15 @@ async function saveMessage (jsonObj) {
           jsonObj.extra = null
       } 
       jsonObj.extra = JSON.stringify(jsonObj.extra)
-      jsonObj.data = JSON.stringify(jsonObj.data)
-      jsonObj.recv = new Date()
+      //Jason modify dtat to key1~8 on 2020.07.25
+      //jsonObj.data = JSON.stringify(jsonObj.data)
+      let keys = Object.keys(jsonObj.data)
+      for(let i=0;i<keys.length;i++) {
+        jsonObj[keys[i]] = jsonObj.data[keys[i]]
+      }
+      delete jsonObj.data
+      if(jsonObj.recv === undefined ||jsonObj.recv === null)
+        jsonObj.recv = new Date()
       //console.log('save jsonObj :')
       //console.log(jsonObj)
       return await Promise.resolve(Report.create(jsonObj))
