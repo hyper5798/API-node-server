@@ -125,10 +125,12 @@ async function swithObj (topic, msg) {
 
 //"ulTopic1": "YESIO/UL/+", for escape romm
 async function handleUpload1 (mObj) { 
-
-  let result = await saveMessage (mObj)
+  let obj = getAdjustObj(mObj);
+  let result = await saveMessage (obj)
 
   if(result.dataValues.type_id != 99) return;
+  //For websocket to webui
+  socket.emit('mqtt_sub',obj);
 
   if(result.dataValues.id){
     console.log(getDatestring() +' -> Save message success')
@@ -137,8 +139,7 @@ async function handleUpload1 (mObj) {
           "id":result.dataValues.id
       }
     });
-    //For websocket to webui
-    socket.emit('mqtt_sub',report);
+    
     if(typeof report.data === 'string')
       report.data = JSON.parse(report.data)
     let mHash = 'escape'
@@ -166,35 +167,44 @@ async function handleUpload2 (jsonObj) {
     console.log( '%s %s is no type (%s) parsing, drop this message', getDatestring(),mac, jsonObj.fport)
     return;
   }
-  let result = await saveMessage (parsingObj)
+  let obj = getAdjustObj(parsingObj);
+  let result = await saveMessage (obj)
   if(result.dataValues.id){
     console.log(getDatestring() +' -> Save message success')
   }
 }
 
+function getAdjustObj(jsonObj) {
+  try {
+    jsonObj['type_id'] = parseInt(jsonObj.fport)
+    delete jsonObj.fport
+    jsonObj['extra'] = {}
+    if(jsonObj.frameCnt !== undefined){
+        jsonObj.extra['frameCnt'] = jsonObj.frameCnt
+        delete jsonObj.frameCnt
+    } else {
+        jsonObj.extra = null
+    } 
+    jsonObj.extra = JSON.stringify(jsonObj.extra)
+    //Jason modify dtat to key1~8 on 2020.07.25
+    //jsonObj.data = JSON.stringify(jsonObj.data)
+    let keys = Object.keys(jsonObj.data)
+    for(let i=0;i<keys.length;i++) {
+      jsonObj[keys[i]] = jsonObj.data[keys[i]]
+    }
+    delete jsonObj.data
+    if(jsonObj.recv === undefined ||jsonObj.recv === null)
+      jsonObj.recv = new Date()
+    //console.log('save jsonObj :')
+    //console.log(jsonObj)
+    return jsonObj
+  } catch (error) {
+      return error
+  }
+}
+
 async function saveMessage (jsonObj) {
   try {
-      jsonObj['type_id'] = parseInt(jsonObj.fport)
-      delete jsonObj.fport
-      jsonObj['extra'] = {}
-      if(jsonObj.frameCnt !== undefined){
-          jsonObj.extra['frameCnt'] = jsonObj.frameCnt
-          delete jsonObj.frameCnt
-      } else {
-          jsonObj.extra = null
-      } 
-      jsonObj.extra = JSON.stringify(jsonObj.extra)
-      //Jason modify dtat to key1~8 on 2020.07.25
-      //jsonObj.data = JSON.stringify(jsonObj.data)
-      let keys = Object.keys(jsonObj.data)
-      for(let i=0;i<keys.length;i++) {
-        jsonObj[keys[i]] = jsonObj.data[keys[i]]
-      }
-      delete jsonObj.data
-      if(jsonObj.recv === undefined ||jsonObj.recv === null)
-        jsonObj.recv = new Date()
-      //console.log('save jsonObj :')
-      //console.log(jsonObj)
       return await Promise.resolve(Report.create(jsonObj))
   } catch (error) {
       return error
