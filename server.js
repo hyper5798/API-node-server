@@ -136,6 +136,7 @@ module.exports = async function createServer () {
   app.use('/devices', require('./routes/deviceRoute'))
   app.use('/classes', require('./routes/classRoute'))
   app.use('/commands', require('./routes/commandRoute'))
+  app.use('/settings', require('./routes/settingRoute'))
   //app.use('/reports', require('./routes/reportRoute'))
 
   const server = http.createServer(app).listen(app.get('port'), '0.0.0.0', () => {
@@ -182,7 +183,8 @@ module.exports = async function createServer () {
     });//send_switch_command
 
     socket.on('mqtt_sub', function (data) {
-      console.log('mqtt_sub : ' + data);
+      console.log('mqtt_sub : ');
+      console.log( data);
       socket.broadcast.emit('update_command_status', data);
     });
 

@@ -3,52 +3,62 @@
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.bulkInsert('products', [{
+      type_id: 11,
       macAddr: 'fcf5c4536490',
       description: '公司實驗板',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c453649a',
+      type_id: 99,
+      macAddr: 'fcf5c4536480',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536491',
+      type_id: 99,
+      macAddr: 'fcf5c4536481',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536492',
+      type_id: 99,
+      macAddr: 'fcf5c4536482',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536493',
+      type_id: 99,
+      macAddr: 'fcf5c4536483',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536494',
+      type_id: 99,
+      macAddr: 'fcf5c4536484',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536495',
+      type_id: 99,
+      macAddr: 'fcf5c4536485',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536496',
+      type_id: 99,
+      macAddr: 'fcf5c4536486',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536497',
+      type_id: 99,
+      macAddr: 'fcf5c4536487',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()
     },{
-      macAddr: 'fcf5c4536498',
+      type_id: 99,
+      macAddr: 'fcf5c4536488',
       description: '密室脫逃測試',
       created_at: new Date(),
       updated_at: new Date()

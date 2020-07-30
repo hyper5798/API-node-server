@@ -40,7 +40,6 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       data: {
-        allowNull: false,
         type: Sequelize.TEXT
       },
       extra: {

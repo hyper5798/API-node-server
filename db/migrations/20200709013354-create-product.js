@@ -8,6 +8,10 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
+      type_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER
+      },
       macAddr: {
         type: Sequelize.STRING
       },

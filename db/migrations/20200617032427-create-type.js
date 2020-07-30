@@ -23,7 +23,6 @@ module.exports = {
         type: Sequelize.STRING
       },
       fields: {
-        allowNull: false,
         type: Sequelize.TEXT
       },
       rules: {
