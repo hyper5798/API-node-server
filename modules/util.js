@@ -26,7 +26,7 @@ async function init() {
   console.log('init clean redis: '+ clean)
  
   let types = await Promise.resolve(Type.findAll())
-  //let devices = await Promise.resolve(Device.findAll())
+  let products = await Promise.resolve(Product.findAll())
   if(types.length>0) {
     for(let i=0; i<types.length;++i){
         let id = types[i].type_id
@@ -39,20 +39,23 @@ async function init() {
         if(typeof rules === 'object') {
           rules = JSON.stringify(rules)
         }
-            
+           
         //await setValue(key, value);
         hsetValue(key, 'fieids', fields);
         hsetValue(key, 'rules', rules);
     }
   }
-  /*if(devices.length>0) {
-    for(let i=0; i<devices.length;++i){
-        let mac = devices[i].macAddr
+  if(products.length>0) {
+    for(let i=0; i<products.length;++i){
+        let mac = products[i].macAddr
+        let key = 'products';
+        let time = products[i].created_at;
         if(debug)
-            console.log('mac'+mac+' -> '+ devices[i].status)
-        setValue('mac'+mac, devices[i].status)
+            console.log('mac'+mac+' -> '+ time)
+        hsetValue(key, mac, time);
     }
-  }*/
+  }
+  
   //await setValue('laravel_database_mytest','12345678');
   //let test = await getValue('macfcf5c4536490');
   //console.log('init clean test: '+ test)

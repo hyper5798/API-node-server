@@ -10,6 +10,9 @@ const Cp = require('../db/models').cp
 const App = require('../db/models').app
 const Report = require('../db/models').report
 const Promise = require('bluebird')
+const redisHandler  = require('../modules/redisHandler')
+const redisClient = new redisHandler(0)
+redisClient.connect();
 
 module.exports = {
     async index(req, res, next) {
@@ -175,12 +178,25 @@ module.exports = {
       if(api_key !== app.api_key) {
         return resResources.notAllowed(res)
       }
+      let mac = app.macAddr
+      let time = await redisClient.hgetValue('products', mac)
+      if(time == null) 
+        return resResources.notAllowed(res)
+      let oldTime = new Date(time).getTime();
+      let nowTime = new Date().getTime();
+      let diff = (nowTime-oldTime)/1000;
+      if(diff<=3) {
+        return resResources.notAllowed(res, 'The upload interval less then 3 seconds!')
+      }
+      //Update upload time
+      redisClient.hsetValue('products', mac, new Date());
+
       app.key_label = JSON.parse(app.key_label)
       //Get app labels
       let keys = Object.keys(app.key_label)
       //console.log(keys);
       let obj = {
-        "macAddr": app.macAddr,
+        "macAddr": mac,
         "app_id": app_id,
         "created_at": new Date(),
         "updated_at": new Date()
@@ -193,7 +209,7 @@ module.exports = {
       for(let i=0;i<keys.length; i++) {
         let key = keys[i];
         if(req.query[key])
-          obj[key] = parseInt(req.query[key]) 
+          obj[key] = parseFloat(req.query[key]) 
         else
           obj[key] = null
       }
