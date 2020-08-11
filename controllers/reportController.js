@@ -171,23 +171,28 @@ module.exports = {
       //Get key and id
       let api_key = req.query.api_key
       let app_id = getAppId(api_key) 
-      if(!app_id)
+      if(!app_id) {
+        console.log('api_key !== app.api_key');
         return resResources.notAllowed(res)
+      }
+        
       //Get app by parse id
       let app = await Promise.resolve(App.findOne({where: {"id":app_id}}))
-      if(api_key !== app.api_key) {
+      if(api_key !== app.api_key) { 
+        console.log('api_key !== app.api_key');
         return resResources.notAllowed(res)
       }
       let mac = app.macAddr
       let time = await redisClient.hgetValue('products', mac)
-      if(time == null) 
-        return resResources.notAllowed(res)
-      let oldTime = new Date(time).getTime();
-      let nowTime = new Date().getTime();
-      let diff = (nowTime-oldTime)/1000;
-      if(diff<=3) {
-        return resResources.notAllowed(res, 'The upload interval less then 3 seconds!')
+      if(time != null) {
+        let oldTime = new Date(time).getTime();
+        let nowTime = new Date().getTime();
+        let diff = (nowTime-oldTime)/1000;
+        if(diff<=3) {
+          return resResources.notAllowed(res, 'The upload interval less then 3 seconds!')
+        }
       }
+        
       //Update upload time
       redisClient.hsetValue('products', mac, new Date());
 
