@@ -195,8 +195,8 @@ module.exports = {
         
       //Update upload time
       redisClient.hsetValue('products', mac, new Date());
-
-      app.key_label = JSON.parse(app.key_label)
+      if(typeof(app.key_label) !== 'object') 
+          app.key_label = JSON.parse(app.key_label)
       //Get app labels
       let keys = Object.keys(app.key_label)
       //console.log(keys);
