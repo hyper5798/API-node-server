@@ -184,17 +184,19 @@ module.exports = {
       }
       let mac = app.macAddr
       let time = await redisClient.hgetValue('products', mac)
+      console.log('time from redis:'+time);
       if(time != null) {
         let oldTime = new Date(time).getTime();
         let nowTime = new Date().getTime();
         let diff = (nowTime-oldTime)/1000;
+        console.log('diff:'+diff);
         if(diff<=3) {
           return resResources.notAllowed(res, 'The upload interval less then 3 seconds!')
         }
       }
-        
+      let utcTime = new Date().toISOString()
       //Update upload time
-      redisClient.hsetValue('products', mac, new Date());
+      redisClient.hsetValue('products', mac, utcTime)
       if(typeof(app.key_label) !== 'object') 
           app.key_label = JSON.parse(app.key_label)
       //Get app labels

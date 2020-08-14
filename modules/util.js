@@ -49,7 +49,7 @@ async function init() {
     for(let i=0; i<products.length;++i){
         let mac = products[i].macAddr
         let key = 'products';
-        let time = products[i].created_at;
+        let time = new Date(products[i].created_at).toISOString()
         if(debug)
             console.log('mac'+mac+' -> '+ time)
         hsetValue(key, mac, time);
