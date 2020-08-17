@@ -252,7 +252,10 @@ module.exports = {
       if(api_key !== app.api_key) {
         return resResources.notAllowed(res)
       }
-      let label = JSON.parse(app.key_label)
+      let label = app.key_label
+      if(typeof(label) !== 'object') 
+          label = JSON.parse(app.key_label)
+
       let keys = Object.keys(label)
       let arr1 = ['recv'];
       let arr2 = arr1.concat(keys)

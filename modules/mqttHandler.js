@@ -128,32 +128,26 @@ async function handleUpload1 (mObj) {
   let obj = getAdjustObj(mObj);
   let result = await saveMessage (obj)
 
-  if(result.dataValues.type_id != 99) return;
+  if(obj.type_id != 99) return;
+  let mHash = 'escape'
+  let key = obj.macAddr
+  if(obj.key1 == 1) 
+    key = key + '_start'
+  if(obj.key1 == 2) 
+    key = key + '_end'
+  if(obj.key1 == 3) 
+    key = key + '_pass'
+
+  //let value = getRecvString(obj.recv)
+  let value = obj.recv
+  //For record the device triger time
+  util.hsetValue(mHash, key, value)
+
   //For websocket to webui
   socket.emit('mqtt_sub',obj);
 
   if(result.dataValues.id){
     console.log(getDatestring() +' -> Save message success')
-    let report = await Report.findOne({
-      where: {
-          "id":result.dataValues.id
-      }
-    });
-    
-    if(typeof report.data === 'string')
-      report.data = JSON.parse(report.data)
-    let mHash = 'escape'
-    let key = report.macAddr
-    if(report.key1 == 1) 
-      key = key + '_start'
-    if(report.key1 == 2) 
-      key = key + '_end'
-    if(report.key1 == 3) 
-      key = key + '_pass'
-  
-    let value = getRecttring(report.recv)
-    //For record the device triger time
-    util.hsetValue(mHash, key, value)
   }
 }
 
@@ -194,7 +188,7 @@ function getAdjustObj(jsonObj) {
     }
     delete jsonObj.data
     if(jsonObj.recv === undefined ||jsonObj.recv === null)
-      jsonObj.recv = new Date()
+      jsonObj.recv = new Date().toISOString()
     //console.log('save jsonObj :')
     //console.log(jsonObj)
     return jsonObj
@@ -229,7 +223,7 @@ function getDatestring() {
   return date.toLocaleDateString() + ' ' +date.toLocaleTimeString()
 }
 
-function getRecttring(time) {
+function getRecvString(time) {
   let date = new Date(time)
   return date.toLocaleDateString() + ' ' +date.toLocaleTimeString()
 }
