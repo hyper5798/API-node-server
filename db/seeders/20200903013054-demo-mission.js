@@ -17,51 +17,23 @@ module.exports = {
       created_at: new Date(),
       updated_at: new Date()
     },{
-      mission_name: 'm2',
+      mission_name: 'm3',
       room_id: 1,
       device_id: 3,
       user_id: 1,
       created_at: new Date(),
       updated_at: new Date()
     },{
-      mission_name: 'm2',
+      mission_name: 'm4',
       room_id: 1,
       device_id: 4,
       user_id: 1,
       created_at: new Date(),
       updated_at: new Date()
     },{
-      mission_name: 'm2',
+      mission_name: 'm5',
       room_id: 1,
       device_id: 5,
-      user_id: 1,
-      created_at: new Date(),
-      updated_at: new Date()
-    },{
-      mission_name: 'm2',
-      room_id: 1,
-      device_id: 6,
-      user_id: 1,
-      created_at: new Date(),
-      updated_at: new Date()
-    },{
-      mission_name: 'm2',
-      room_id: 1,
-      device_id: 7,
-      user_id: 1,
-      created_at: new Date(),
-      updated_at: new Date()
-    },{
-      mission_name: 'm2',
-      room_id: 1,
-      device_id: 8,
-      user_id: 1,
-      created_at: new Date(),
-      updated_at: new Date()
-    },{
-      mission_name: 'm2',
-      room_id: 1,
-      device_id: 9,
       user_id: 1,
       created_at: new Date(),
       updated_at: new Date()
