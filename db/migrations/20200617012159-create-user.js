@@ -25,6 +25,9 @@ module.exports = {
         allowNull: false,
         defaultValue: 1
       },
+      class_id: {
+        type: Sequelize.INTEGER
+      },
       role_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
