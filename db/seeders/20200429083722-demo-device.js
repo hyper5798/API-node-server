@@ -3,7 +3,7 @@
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.bulkInsert('devices', [{
-      device_name: '壽豐養蜂場溫濕度計',
+      device_name: '壽豐濕度計',
       macAddr: 'fcf5c45364990',
       status: 1,
       cp_id: 1,

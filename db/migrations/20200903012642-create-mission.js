@@ -12,6 +12,10 @@ module.exports = {
         allowNull: false,
         type: Sequelize.STRING
       },
+      order: {
+        allowNull: false,
+        type: Sequelize.INTEGER
+      },
       room_id: {
         allowNull: false,
         type: Sequelize.INTEGER
@@ -23,15 +27,23 @@ module.exports = {
         allowNull: false,
         type: Sequelize.INTEGER
       },
+      macAddr: {
+        allowNull: false,
+        type: Sequelize.STRING
+      },
       user_id: {
         allowNull: false,
         type: Sequelize.INTEGER
       },
       created_at: {
-        type: Sequelize.DATE
+        type: 'TIMESTAMP',
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        allowNull: false
       },
       updated_at: {
-        type: Sequelize.DATE
+        type: 'TIMESTAMP',
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        allowNull: false
       }
     });
   },

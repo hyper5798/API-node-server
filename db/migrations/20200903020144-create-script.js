@@ -16,6 +16,10 @@ module.exports = {
         allowNull: false,
         type: Sequelize.INTEGER
       },
+      room_id: {
+        allowNull: false,
+        type: Sequelize.INTEGER
+      },
       content: {
         allowNull: false,
         type: Sequelize.STRING
@@ -31,11 +35,19 @@ module.exports = {
         allowNull: true,
         type: Sequelize.STRING
       },
+      image_url: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
       created_at: {
-        type: Sequelize.DATE
+        type: 'TIMESTAMP',
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        allowNull: false
       },
       updated_at: {
-        type: Sequelize.DATE
+        type: 'TIMESTAMP',
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        allowNull: false
       }
     });
   },
