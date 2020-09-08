@@ -2,7 +2,7 @@
 module.exports = (sequelize, DataTypes) => {
   const mission = sequelize.define('mission', {
     mission_name: DataTypes.STRING,
-    order: DataTypes.INTEGER,
+    sequence: DataTypes.INTEGER,
     room_id: DataTypes.INTEGER,
     game_id: DataTypes.INTEGER,
     device_id: DataTypes.INTEGER,

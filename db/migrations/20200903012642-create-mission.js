@@ -12,7 +12,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.STRING
       },
-      order: {
+      sequence: {
         allowNull: false,
         type: Sequelize.INTEGER
       },
