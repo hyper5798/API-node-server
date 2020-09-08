@@ -22,6 +22,14 @@ const appConfig = require('./config/app.json')
 const resResources = require('./lib/resResources')
 const Command = require('./db/models').command
 const mqttConfig = require('./config/mqtt.json')
+const dataResources = require('./lib/dataResources')
+const redisHandler  = require('./modules/redisHandler')
+let roomObj = {}
+let missionObj = {}
+let scriptObj = {}
+let actionScript = {}
+let action = {}
+let macObj = {}
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -68,8 +76,8 @@ module.exports = async function createServer () {
   const app = express()
   let mqttClient = new mqttHandler();
   mqttClient.connect();
-  const expressSwagger = require('express-swagger-generator')(app)
-  expressSwagger(options)
+  //const expressSwagger = require('express-swagger-generator')(app)
+  //expressSwagger(options)
 
   app.use(errorhandler())
 
@@ -101,6 +109,25 @@ module.exports = async function createServer () {
 
   app.get('/reports/write', reportController.write)
   app.get('/reports/read', reportController.read)
+
+  app.get("/escape/Action", function(req, res) {
+    return setMissionAction(req, res, mqttClient)
+  })
+
+  app.get("/escape/stop", function(req, res) {
+    return setMissionRecord(req, res, mqttClient, 6)
+  })
+
+  app.get("/escape/start", function(req, res) {
+    return setMissionStart(req, res, mqttClient)
+  })
+
+  app.get("/escape/status", function(req, res) {
+    let room_id = req.body.room_id || req.query.room_id
+    if(action[room_id] == undefined)
+      action[room_id] = 0
+    return resResources.getDtaSuccess(res, action[room_id])
+  })
 
   /**
    * Routes for the application
@@ -277,5 +304,263 @@ async function sendControl(req, res, mqttClient) {
 }
 
 function decode_base64(str) {
-  return new Buffer(str, 'base64').toString();
+  return new Buffer(str, 'base64').toString()
 }
+
+async function setMissionAction(req, res, mClient) {
+  
+  //let topic = mqttConfig.dlRoomTopic//Escape dl topic
+  let time = new Date().toISOString()
+  console.log(time+' setMissionAction -------------------');
+  let redisClient = new redisHandler(0)
+  redisClient.connect()
+  let user_id = req.body.user_id || req.query.user_id
+  let room_id = req.body.room_id || req.query.room_id
+  if(user_id === undefined || room_id === undefined)
+      return resResources.missPara(res)
+  
+  let idList = []
+  let roomKey = 'room'+room_id
+  let team = await dataResources.getTeam(user_id)
+  let teamUsers = await dataResources.getTeamUsers(team.team_id)
+  //Get room
+  if(roomObj[room_id] === undefined || typeof(roomObj[room_id]) != 'object') {
+    roomObj[room_id] = await dataResources.getRoom(room_id)
+    let room = roomObj[room_id]
+    if(room === null) 
+      return resResources.notFound(res, 'Not found room')
+
+    redisClient.hsetValue(roomKey,'room_name', room.room_name)
+    redisClient.hsetValue(roomKey,'pass_time', room.pass_time)
+  } 
+  //Get all of missions of room
+  if(missionObj[room_id] === undefined || typeof(missionObj[room_id]) != 'object') {
+    missionObj[room_id] = await dataResources.getMissions(room_id)
+  }
+  //Get all of scripts of room
+  if(scriptObj[room_id] === undefined || typeof(scriptObj[room_id]) != 'object') {
+    let allList = await dataResources.getScripts(room_id)
+    let test = {}
+    //Group by mission id
+    for(let i=0;i<allList.length;i++) {
+      let item = allList[i]
+      if(test[item.mission_id] === undefined) {
+        test[item.mission_id] = []
+      }
+      test[item.mission_id].push(item)
+    }
+    scriptObj[room_id] = test
+  }
+  let room = JSON.parse(JSON.stringify(roomObj[room_id]))
+  let missions = JSON.parse(JSON.stringify(missionObj[room_id]))
+  let scripts = JSON.parse(JSON.stringify(scriptObj[room_id]))
+  
+  //console.log(typeof room)
+  //console.log(typeof missions)
+  console.log(typeof scripts)
+  
+  //Get all of user id in team
+  for(let i=0;i<teamUsers.length;i++) {
+    let item = teamUsers[i]
+      idList.push(item.user_id)
+  }
+  //Set default action
+  if(action[room_id] === undefined) {
+    action[room_id] = 0
+  }
+
+  //Get mission and random script & action = 1 => init room and mission for redis
+  if(action[room_id] === 0) {
+    action[room_id] = 1
+    //Delete emergency mission
+    redisClient.hsetValue(roomKey, 'count', (missions.length-1) )
+    let mStr = ''
+    for(let i=0;i<missions.length;i++) {
+
+      let mission = missions[i]
+
+      if(mission.sequence === null)
+        continue
+
+      let mac = mission.macAddr
+      //Filter emergency mac of room 
+      if(mission.sequence != 0) {
+        //redisClient.hsetValue(roomKey, mission.sequence, mac)
+        mStr = mStr + mission.macAddr + ','
+      } 
+      //redisClient.hsetValue(missionkey, 'mission_id', mission.id)
+      redisClient.hsetValue(mac, 'room', time)
+      redisClient.hsetValue(mac, 'sequence', mission.sequence)
+      redisClient.hsetValue(mac, 'mission_name', mission.mission_name)
+      //redisClient.hsetValue(missionkey, 'device_id', mission.device_id)
+      //Filter sequence 0 -> for emergency no script
+      if(mission.sequence == 0)
+        continue
+      actionScript[mission.id] = getScript(scripts[mission.id])
+    }
+    mStr = mStr.substring(0,mStr.length-1);
+    redisClient.hsetValue(roomKey, 'macs', mStr )
+  }
+  let target = null
+  
+  //Set script to mission
+  for(let i=0;i<missions.length;i++) {
+    let mission = missions[i]
+    
+    if(mission.sequence === null || mission.sequence === 0)
+        continue
+    let mac = mission.macAddr
+    mission['script'] = actionScript[mission.id]
+    if(mission.sequence === 1) {
+      target = mac
+    }
+    //Send MQTT pass to node
+    if(mac != undefined && mission.sequence != 0) {
+      let pass = mission.script.pass
+      if(typeof pass === 'string')
+        pass = JSON.parse(pass)
+        let topic = 'YESIO/DL/'+mac
+      let message = JSON.stringify({"macAddr": mac, "pass": pass})
+      mClient.sendMessage(topic, message)
+    }
+  }
+  //First mission start
+  if(target != null) {
+    redisClient.hsetValue(target, 'start', time)
+    redisClient.hsetValue(roomKey, 'sequence', 1)
+    save2SendSocket(mClient, target, 1, time)
+  }
+  
+  let data = {"room":room, "missions":missions, "ids":idList}
+  return resResources.getDtaSuccess(res, data)
+}
+
+async function setMissionRecord(req, res, mClient, status) {
+  
+  //let topic = mqttConfig.dlRoomTopic//Escape dl topic
+  let mytime = new Date().toISOString()
+  console.log(mytime+' setMissionStop -------------------');
+  let room_id = req.body.room_id || req.query.room_id
+  if(room_id === undefined)
+      return resResources.missPara(res)
+  let roomKey = 'room'+room_id
+  
+  action[room_id] = 0
+  let sequence = await hgetValue(roomKey, 'sequence')
+  if(sequence === null) {
+    return resResources.notAllowed(res)
+  }
+  let index = parseInt(sequence) - 1
+  let str = await hgetValue(roomKey, 'macs')
+  if(str === null) {
+    return resResources.notAllowed(res)
+  }
+  let arr = str.split(',')
+  let mac = arr[index]
+  hsetValue(mac, 'stop', mytime)
+  save2SendSocket(mClient, mac, status, mytime)
+  
+  //For record
+  /*let obj = {}
+  let roomStart, roomEnd
+  for(let i=0; i<arr.length; i++) {
+    let mac = arr[i]
+    let start,end
+    let mTime = mytime
+    if(i < index) {
+      start = await hgetValue(mac, 'start')
+      end = await hgetValue(mac, 'stop')
+      if(i===0){
+        roomStart = start
+      }
+    } else if(i === index){
+      start = await hgetValue(mac, 'start')
+      end = mTime
+      roomEnd = mTime
+    } 
+    obj[mac] = {"start": start, "end": end, 'time': getDiff(start, end)}
+  }
+  
+  console.log(obj)*/
+  
+  
+  return resResources.doSuccess(res, 'Stop the game')
+}
+
+function getDiff(time1, time2) {
+  let new1 = Date.parse(time1)
+  let new2 = Date.parse(time2)
+  let timestamp = Math.ceil((new2-new1)/1000)
+  return timestamp
+}
+
+async function setMissionStart(req, res, mClient) {
+  let time = new Date().toISOString()
+  console.log(time+' setMissionStart -------------------')
+  let room_id = req.body.room_id || req.query.room_id
+  let sequence = req.body.sequence || req.query.sequence
+  if(room_id === undefined || sequence === undefined)
+      return resResources.missPara(res)
+  
+  let roomKey = 'room'+room_id
+  let currentSequence = await hgetValue(roomKey, 'sequence')
+  if(currentSequence != null) {
+    currentSequence = parseInt(currentSequence)
+  }
+  sequence = parseInt(sequence)  
+  if(sequence < currentSequence)
+    return resResources.notAllowed(res, 'Sequence is less then last one')
+  let index = sequence - 1 
+  let str = await hgetValue(roomKey, 'macs')
+  if(str === null) {
+    return resResources.notAllowed(res)
+  }
+  let arr = str.split(',')
+  let mac2 = arr[index]
+  let mac1 = arr[index-1]
+  console.log('sequence:' + sequence)
+  console.log('mac1:' + mac1)
+  console.log('mac2:' + mac2)
+  
+  if(mac1 === undefined) {
+    return resResources.notFound(res, 'Not find out mission')
+  }
+  
+  save2SendSocket(mClient, mac1, 2, time)
+  hsetValue(mac1, 'stop', time)
+  hsetValue(mac2, 'start', time)
+  save2SendSocket(mClient, mac2, 1, time)
+  hsetValue(roomKey, 'sequence', sequence)
+  
+  return resResources.doSuccess(res, 'Start mission OK')
+}
+
+function getScript(list) {
+  //console.log(list)
+  let num = getRandom(list.length)
+  console.log('getScript number = ',num)
+  return JSON.parse(JSON.stringify(list[num]))
+}
+
+function getRandom(x){
+  return Math.floor(Math.random()*x);
+};
+
+function hsetValue(key, fieids, value) {
+  let redisClient = new redisHandler(0);
+  redisClient.connect();
+  redisClient.hsetValue(key, fieids, value);
+}
+
+function hgetValue(key, fieids, value) {
+  let redisClient = new redisHandler(0);
+  redisClient.connect();
+  return redisClient.hgetValue(key, fieids, value)
+}
+
+function save2SendSocket(client, mac, status, time) {
+  let mobj = {"macAddr":mac,"data":{"key1":status},"fport":99, "recv":time}
+  client.saveAndSendSocket(mobj) 
+}
+
+

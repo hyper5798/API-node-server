@@ -77,7 +77,7 @@ class MqttHandler {
     });
 
     this.mqttClient.on('close', () => {
-      console.log(`mqtt client disconnected`);
+      console.log(`mqtt client disconnected ` + new Date().toISOString());
     });
   }
 
@@ -85,6 +85,21 @@ class MqttHandler {
   sendMessage(topic, message) {
     this.mqttClient.publish(topic, message);
   }
+
+  saveAndSendSocket(msg) {
+    let obj = getAdjustObj(msg);
+    saveMessage (obj) 
+    socket.emit('mqtt_sub', obj);
+  }
+}
+
+MqttHandler.prototype.saveAndSendMqtt = function(msg) {
+  let obj = getAdjustObj(msg);
+  saveMessage (obj)
+  /*if(typeof obj != 'string')
+    socket.emit('mqtt_sub', JSON.stringify(obj));
+  else*/ 
+    socket.emit('mqtt_sub', obj);
 }
 
 module.exports = MqttHandler;
@@ -101,7 +116,7 @@ async function swithObj (topic, msg) {
   let message = msg.toString()
   let obj = getJSONObj(message)
   let mac = obj.macAddr
-  let value = await util.getValue(mac)
+  let value = await util.hgetValue(mac,'device_id')
   if( value === null) {
     const Device = require('../db/models').device
     let device = await Promise.resolve(Device.findOne({where: {"macAddr":mac}}))
@@ -123,28 +138,36 @@ async function swithObj (topic, msg) {
 }
 
 
-//"ulTopic1": "YESIO/UL/+", for escape romm
+//"ulTopic1": "YESIO/UL/+", for escape room
 async function handleUpload1 (mObj) { 
   let obj = getAdjustObj(mObj);
   let result = await saveMessage (obj)
-
+  
   if(obj.type_id != 99) return;
-  let mHash = 'escape'
+  let mac = obj.macAddr
   let key = obj.macAddr
   if(obj.key1 == 1) 
-    key = key + '_start'
+    key = 'start'
   if(obj.key1 == 2) 
-    key = key + '_end'
-  if(obj.key1 == 3) 
-    key = key + '_pass'
+    key = 'end'
+  if(obj.key1 == 3) {
+    key = 'pass'
+  }
+  if(obj.key1 == 4) {
+    key = 'fail'
+  }
+  if(obj.key1 == 6) {
+    key = 'fail'
+  }
+    
 
   //let value = getRecvString(obj.recv)
   let value = obj.recv
   //For record the device triger time
-  util.hsetValue(mHash, key, value)
+  util.hsetValue(mac, key, value)
 
   //For websocket to webui
-  socket.emit('mqtt_sub',obj);
+  socket.emit('mqtt_sub',JSON.stringify(obj));
 
   if(result.dataValues.id){
     console.log(getDatestring() +' -> Save message success')
@@ -179,7 +202,8 @@ function getAdjustObj(jsonObj) {
     } else {
         jsonObj.extra = null
     } 
-    jsonObj.extra = JSON.stringify(jsonObj.extra)
+    if(jsonObj.extra != null)
+      jsonObj.extra = JSON.stringify(jsonObj.extra)
     //Jason modify dtat to key1~8 on 2020.07.25
     //jsonObj.data = JSON.stringify(jsonObj.data)
     let keys = Object.keys(jsonObj.data)

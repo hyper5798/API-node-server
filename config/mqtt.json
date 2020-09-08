@@ -1,10 +1,12 @@
 {
     "port": 1883,
-    "host": "appserver.yesio.net",
+    "host": "45.80.153.45",
     "name": "yesio",
     "password": "yesio12345",
     "dlTopic": "YESIO/DL/CONTROL",
     "ulTopic1": "YESIO/UL/+",
     "ulTopic2": "GIOT-GW/UL/+",
-    "ulTopic3": "USERDEFINED/UL/+"
+    "ulTopic3": "USERDEFINED/UL/+",
+    "dlRoomTopic": "YESIO/DL/ESCAPE",
+    "ulRoomTopic": "YESIO/UL/ESCAPE"
 }
