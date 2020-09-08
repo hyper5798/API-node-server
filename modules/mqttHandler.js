@@ -116,13 +116,11 @@ async function swithObj (topic, msg) {
   let message = msg.toString()
   let obj = getJSONObj(message)
   let mac = obj.macAddr
-  let value = await util.hgetValue(mac,'device_id')
+  let value = await util.hgetValue(mac,'sequence')
   if( value === null) {
-    const Device = require('../db/models').device
-    let device = await Promise.resolve(Device.findOne({where: {"macAddr":mac}}))
-    if(device) {
-      //util.setValue(mac, device.status)
-    } else {
+    const Product = require('../db/models').product
+    let product = await Promise.resolve(Product.findOne({where: {"macAddr":mac}}))
+    if(product === null) {
       console.log('???? '+ getDatestring() + ' drop mac : ' + mac);
       return null
     }
@@ -146,18 +144,27 @@ async function handleUpload1 (mObj) {
   if(obj.type_id != 99) return;
   let mac = obj.macAddr
   let key = obj.macAddr
+  let room_id = await util.hgetValue(mac, 'room_id')
+  
+  if(room_id == null) return;
+
+  let roomKey = 'room'+room_id
+  
   if(obj.key1 == 1) 
     key = 'start'
   if(obj.key1 == 2) 
     key = 'end'
-  if(obj.key1 == 3) {
-    key = 'pass'
+  if(obj.key1 == 3) {//Pass
+    key = 'end'
+    util.hsetValue(roomKey, 'pass', 1)
   }
-  if(obj.key1 == 4) {
-    key = 'fail'
+  if(obj.key1 == 4) {//fail
+    key = 'end'
+    util.hsetValue(roomKey, 'pass', 0)
   }
-  if(obj.key1 == 6) {
-    key = 'fail'
+  if(obj.key1 == 6) {//
+    key = 'end'
+    util.hsetValue(roomKey, 'pass', 0)
   }
     
 

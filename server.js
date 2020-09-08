@@ -389,7 +389,7 @@ async function setMissionAction(req, res, mClient) {
         mStr = mStr + mission.macAddr + ','
       } 
       //redisClient.hsetValue(missionkey, 'mission_id', mission.id)
-      redisClient.hsetValue(mac, 'room', time)
+      redisClient.hsetValue(mac, 'room_id', room_id)
       redisClient.hsetValue(mac, 'sequence', mission.sequence)
       redisClient.hsetValue(mac, 'mission_name', mission.mission_name)
       //redisClient.hsetValue(missionkey, 'device_id', mission.device_id)
@@ -457,7 +457,7 @@ async function setMissionRecord(req, res, mClient, status) {
   }
   let arr = str.split(',')
   let mac = arr[index]
-  hsetValue(mac, 'stop', mytime)
+  hsetValue(mac, 'end', mytime)
   save2SendSocket(mClient, mac, status, mytime)
   
   //For record
@@ -469,7 +469,7 @@ async function setMissionRecord(req, res, mClient, status) {
     let mTime = mytime
     if(i < index) {
       start = await hgetValue(mac, 'start')
-      end = await hgetValue(mac, 'stop')
+      end = await hgetValue(mac, 'end')
       if(i===0){
         roomStart = start
       }
@@ -527,7 +527,7 @@ async function setMissionStart(req, res, mClient) {
   }
   
   save2SendSocket(mClient, mac1, 2, time)
-  hsetValue(mac1, 'stop', time)
+  hsetValue(mac1, 'end', time)
   hsetValue(mac2, 'start', time)
   save2SendSocket(mClient, mac2, 1, time)
   hsetValue(roomKey, 'sequence', sequence)
