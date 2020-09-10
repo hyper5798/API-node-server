@@ -11,7 +11,7 @@ const App = require('../db/models').app
 const Report = require('../db/models').report
 const Promise = require('bluebird')
 const redisHandler  = require('../modules/redisHandler')
-const redisClient = new redisHandler(0)
+const redisClient = new redisHandler(1)
 redisClient.connect();
 
 module.exports = {
