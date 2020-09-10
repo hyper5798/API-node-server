@@ -32,6 +32,10 @@ module.exports = {
         allowNull: true,
         type: Sequelize.INTEGER
       },
+      mission_id: {
+        allowNull: true,
+        type: Sequelize.INTEGER
+      },
       created_at: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
