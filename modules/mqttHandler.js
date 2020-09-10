@@ -87,9 +87,21 @@ class MqttHandler {
   }
 
   saveAndSendSocket(msg) {
-    let obj = getAdjustObj(msg);
+    let obj = getAdjustObj(msg)
     saveMessage (obj) 
-    socket.emit('mqtt_sub', obj);
+    socket.emit('mqtt_sub', obj)
+  }
+
+  adjustObj(msg) {
+    return getAdjustObj(msg)
+  }
+
+  saveMessage(obj) { 
+    return saveMessage(obj)
+  }
+
+  sendSocket(obj) { 
+    socket.emit('mqtt_sub', obj)
   }
 }
 
@@ -140,7 +152,8 @@ async function swithObj (topic, msg) {
 async function handleUpload1 (mObj) { 
   let obj = getAdjustObj(mObj);
   let result = await saveMessage (obj)
-  
+  //Jason add for only keep-alive and node-ack
+  if(true) return;
   if(obj.type_id != 99) return;
   let mac = obj.macAddr
   let key = obj.macAddr
@@ -229,11 +242,7 @@ function getAdjustObj(jsonObj) {
 }
 
 async function saveMessage (jsonObj) {
-  try {
-      return await Promise.resolve(Report.create(jsonObj))
-  } catch (error) {
-      return error
-  }
+  return await Promise.resolve(Report.create(jsonObj))
 }
 
 function getJSONObj(obj) {

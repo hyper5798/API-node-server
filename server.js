@@ -457,6 +457,7 @@ async function setMissionAction(req, res, mClient) {
       mission['script'] = actionScript[mission.id]
       if(mission.sequence === 1) {
         target = mac
+        save2SendSocket(mClient, target, 1, time)
       }
       //Send MQTT pass to node
       if(mac != undefined && mission.sequence != 0) {
@@ -473,7 +474,7 @@ async function setMissionAction(req, res, mClient) {
       redisClient.hsetValue(target, 'start', time)
       redisClient.hsetValue(roomKey, 'start', time)
       redisClient.hsetValue(roomKey, 'sequence', 1)
-      save2SendSocket(mClient, target, 1, time)
+      
     }
     
     let data = {"room":room, "ids":idList, "missions":missions }
@@ -686,9 +687,11 @@ function remove(key, field) {
   return redisClient.remove(key, field);
 }
 
-function save2SendSocket(client, mac, status, time) {
-  let mobj = {"macAddr":mac,"data":{"key1":status},"fport":99, "recv":time}
-  client.saveAndSendSocket(mobj) 
-}
+async function save2SendSocket(client, mac, status, time) {
+  let msg = {"macAddr":mac,"data":{"key1":status},"fport":99, "recv":time}
+  let mobj = client.adjustObj(msg)
+  let result = await client.saveMessage(mobj)
+  client.sendSocket(mobj)
+} 
 
 
