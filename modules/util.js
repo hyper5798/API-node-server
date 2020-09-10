@@ -4,7 +4,7 @@ const Type = require('../db/models').type
 const Device = require('../db/models').device
 const Product = require('../db/models').product
 const redisHandler  = require('./redisHandler')
-let redisClient = new redisHandler(0);
+let redisClient = new redisHandler(1);
 redisClient.connect();
 setTimeout(init, 1500);
 
