@@ -39,12 +39,13 @@ class redisHandler {
 
   hsetValue(key,field,value) {
     key = appConfig.laravel_prifix+key
-    let result = this.redisClient.hsetAsync(key, field, value);
+    let result = this.redisClient.hsetAsync(key, field, value)
+    return Promise.resolve(result)
   }
 
   hgetValue(key,field) {
     key = appConfig.laravel_prifix+key
-    let value = this.redisClient.hgetAsync(key, field);
+    let value = this.redisClient.hgetAsync(key, field)
     //console.log('hgetValue :' + value);
     return Promise.resolve(value)
   }
