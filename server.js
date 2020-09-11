@@ -31,6 +31,9 @@ let scriptObj = {}
 let actionScript = {}
 let action = {}
 let macObj = {}
+let trCount = 0
+let rCount = 0
+let actionCount = 0
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -331,6 +334,7 @@ async function setMissionAction(req, res, mClient) {
     //let topic = mqttConfig.dlRoomTopic//Escape dl topic
     let time = new Date().toISOString()
     console.log(time+' setMissionAction -------------------');
+    actionCount++;
     let redisClient = new redisHandler(0)
     redisClient.connect()
     let clean = await redisClient.flush()
@@ -524,7 +528,13 @@ async function setMissionRecord(req, res, mClient, status) {
     //Save record for mission in setMissionRecord
     if(isTest === false) {
       let result = await saveRecord(room_id, mac)
+      if(result.id)
+        rCount++;
       let result2 = await saveTeamRecord(room_id, mac, status)
+      if(result2.id)
+        trCount++;
+
+      console.log('actionCount'+actionCount+',rCount :'+rCount + ', trCount :'+trCount)
     }
     
     return resResources.doSuccess(res, 'Stop the game')
@@ -589,7 +599,11 @@ async function setMissionStart(req, res, mClient) {
     save2SendSocket(mClient, mac2, 1, mytime)
     //Save record for mission in setMissionStart
     if(isTest === false) {
-      result = await saveRecord(room_id, mac1)
+      let check = await saveRecord(room_id, mac1)
+      if(check && check.id) 
+        rCount++;
+      /*console.log('--------- saveRecord-------- '+ new Date().toISOString())
+      console.log('id:'+check.id+', mission_id: '+ check.mission_id)*/
     }
     
     return resResources.doSuccess(res, 'Start mission OK')
@@ -665,7 +679,8 @@ async function saveTeamRecord(id, mac, status) {
 function getScript(list) {
   //console.log(list)
   let num = getRandom(list.length)
-  console.log('getScript number = ',num)
+
+  //console.log('getScript number = ',num)
   return JSON.parse(JSON.stringify(list[num]))
 }
 
@@ -692,10 +707,14 @@ function remove(key, field) {
 }
 
 async function save2SendSocket(client, mac, status, time) {
+  let newTime = new Date().toISOString()
   let msg = {"macAddr":mac,"data":{"key1":status},"fport":99, "recv":time}
   let mobj = client.adjustObj(msg)
   client.sendSocket(mobj)
-  let result = await client.saveMessage(mobj)
+  let check = await client.saveMessage(mobj)
+  console.log('******************'+ newTime)
+  console.log('id:'+check.id+', mac: '+ mac + ', status: '+ check.key1)
+  return check
 } 
 
 

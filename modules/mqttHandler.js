@@ -241,8 +241,8 @@ function getAdjustObj(jsonObj) {
   }
 }
 
-async function saveMessage (jsonObj) {
-  return await Promise.resolve(Report.create(jsonObj))
+function saveMessage (jsonObj) {
+  return Promise.resolve(Report.create(jsonObj))
 }
 
 function getJSONObj(obj) {
