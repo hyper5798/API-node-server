@@ -34,6 +34,7 @@ let macObj = {}
 let trCount = 0
 let rCount = 0
 let actionCount = 0
+let errorObj = []
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -141,6 +142,16 @@ module.exports = async function createServer () {
 
   app.get("/escape/status", function(req, res) {
     return getStatus(req, res)
+  })
+
+  app.get("/escape/status", function(req, res) {
+    return getStatus(req, res)
+  })
+
+
+  app.get("/escape/error", function(req, res) {
+    let data = errorObj
+    resResources.getDtaSuccess(res, data)
   })
 
   /**
@@ -498,23 +509,35 @@ async function setMissionRecord(req, res, mClient, status) {
     let redisClient = new redisHandler(0)
     redisClient.connect()
     let room_id = req.body.room_id || req.query.room_id
-    if(room_id === undefined)
-        return resResources.missPara(res)
+    if(room_id === undefined) {
+      console.log('????? missPara room_id')
+      errorObj.push(mytime+'-missPara room_id')
+      return resResources.missPara(res)
+    }
+        
     if(action[room_id] !=1) {
+      errorObj.push(mytime+' - action[room_id] !=1')
+      console.log('????? action[room_id] !=1 -> notAllowed')
       return resResources.notAllowed(res,('status:'+action[room_id]))
     }
     let roomKey = 'room'+room_id
+    console.log('roomKey:'+roomKey)
     //Set status
     action[room_id] = status
     
     //Get mac
     let sequence = await redisClient.hgetValue(roomKey, 'sequence')
     if(sequence === null) {
+      errorObj.push(mytime+' - sequence null')
+      console.log('????? sequence from redis (room)is null ')
       sequence = 1;
     }
+    
     let index = parseInt(sequence) - 1
     let str = await redisClient.hgetValue(roomKey, 'macs')
     if(str === null) {
+      errorObj.push(mytime+' - macs null')
+      console.log('????? macs from redis (room) is null ')
       return resResources.notAllowed(res, 'No action yet')
     }
     let arr = str.split(',')
@@ -561,11 +584,15 @@ async function setMissionStart(req, res, mClient) {
     redisClient.connect();
     let room_id = req.body.room_id || req.query.room_id
     let sequence = req.body.sequence || req.query.sequence
+
     if(room_id === undefined || sequence === null)
         return resResources.missPara(res)
-        
+    
     let roomKey = 'room'+room_id
+    console.log('roomKey :'+roomKey +', sequence:'+sequence)
     let count = await redisClient.hgetValue(roomKey, 'count')
+    console.log('From redis count :')
+    console.log(count)
 
     if(count === null) {
       return resResources.notAllowed(res, 'No action yet')
@@ -573,15 +600,22 @@ async function setMissionStart(req, res, mClient) {
 
     sequence = parseInt(sequence)
     count = parseInt(count)
-
-    if(sequence > count)
+   
+    if(sequence > count) {
+      console.log('sequence > count -> Not found sequence')
       return resResources.notFound(res, 'Not found sequence')
-    if(sequence < 2)
+    }  
+     
+    if(sequence < 2) {
+      console.log('sequence < 2 -> Sequence is less then 2')
       return resResources.notAllowed(res, 'Sequence is less then 2')
+    }
+      
     
     let index = sequence - 1 
     let str = await redisClient.hgetValue(roomKey, 'macs')
     if(str === null) {
+      console.log('macs from redis is null')
       return resResources.notAllowed(res)
     }
     let arr = str.split(',')
@@ -596,6 +630,8 @@ async function setMissionStart(req, res, mClient) {
     result1 = await redisClient.hsetValue(mac1, 'end', mytime)
     result1 = await redisClient.hsetValue(mac2, 'start', mytime)
     result1 = await redisClient.hsetValue(roomKey, 'sequence', sequence)
+    console.log('mac2 :'+ mac2)
+    console.log('mission_id from mac2:'+currentMission)
     save2SendSocket(mClient, mac2, 1, mytime)
     //Save record for mission in setMissionStart
     if(isTest === false) {

@@ -34,10 +34,17 @@ let options = {
 
 class MqttHandler {
   constructor() {
-    this.mqttClient = null;
-    this.host = mqttConfig.host;
-    this.username = mqttConfig.name; // mqtt credentials if these are needed to connect
-    this.password = mqttConfig.password;
+    this.mqttClient = null
+    this.host = mqttConfig.host
+    this.clientId = 'mqttjs_' + Math.random().toString(16).substr(2, 8)
+    this.username = mqttConfig.name // mqtt credentials if these are needed to connect
+    this.password = mqttConfig.password
+    this.keepalive = 60,
+    this.reconnectPeriod= 1000
+    this.protocolId = 'MQIsdp'
+    this.protocolVersion= 3
+    this.clean= true,
+    this.encoding= 'utf8'
   }
 
   checkWSConnect() {
@@ -83,6 +90,7 @@ class MqttHandler {
 
   // Sends a mqtt message to topic: mytopic
   sendMessage(topic, message) {
+    
     this.mqttClient.publish(topic, message);
   }
 
@@ -241,8 +249,8 @@ function getAdjustObj(jsonObj) {
   }
 }
 
-function saveMessage (jsonObj) {
-  return Promise.resolve(Report.create(jsonObj))
+async function saveMessage (jsonObj) {
+  return await Promise.resolve(Report.create(jsonObj))
 }
 
 function getJSONObj(obj) {
