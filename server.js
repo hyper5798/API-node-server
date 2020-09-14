@@ -34,6 +34,8 @@ let trCount = 0
 let rCount = 0
 let actionCount = 0
 let errorObj = []
+let sequenceObj = {}
+let macObj = {}
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -361,6 +363,7 @@ async function setMissionAction(req, res, mClient) {
     hsetValue(redisClient, roomKey, 'start', nTime)
     //clean = await redisClient.hsetValue(roomKey, 'sequence', 1)
     hsetValue(redisClient, roomKey, 'sequence', 1)
+    sequenceObj[room_id] = 1
 
     let teamUser = await dataResources.getTeamUser(user_id)
     if(teamUser === null) 
@@ -473,7 +476,7 @@ async function setMissionAction(req, res, mClient) {
     hsetValue(redisClient, roomKey, 'count', arr.length)
     //clean = await redisClient.hsetValue(roomKey, 'macs', mStr )
     hsetValue(redisClient, roomKey, 'macs', mStr)
-
+    macObj[room_id] = mStr
     let target = null
     
     //Set script to mission
@@ -535,8 +538,14 @@ async function setMissionRecord(req, res, mClient, status) {
     action[room_id] = status
     
     //Get sequence
-    let sequence = await redisClient.hgetValue(roomKey, 'sequence')
+    let sequence
+    
+    sequence = await redisClient.hgetValue(roomKey, 'sequence')
+    sequence = null
     console.log('sequence :'+sequence)
+    if(sequence === null) {
+      sequence = sequenceObj[room_id]
+    }
     if(sequence === null) {
       errorObj.push(mytime+' - sequence null')
       console.log('????? sequence from redis (room)is null ')
@@ -546,6 +555,9 @@ async function setMissionRecord(req, res, mClient, status) {
     let index = parseInt(sequence) - 1
     let str = await redisClient.hgetValue(roomKey, 'macs')
     console.log('macs:'+str)
+    if(str === null) {
+      str = macObj[room_id]
+    }
     if(str === null) {
       errorObj.push(mytime+' - macs null')
       console.log('????? macs from redis (room) is null ')
@@ -632,6 +644,9 @@ async function setMissionStart(req, res, mClient) {
     let index = sequence - 1 
     let str = await redisClient.hgetValue(roomKey, 'macs')
     if(str === null) {
+      str = macObj[room_id]
+    }
+    if(str === null) {
       console.log('macs from redis is null')
       return resResources.notAllowed(res)
     }
@@ -647,6 +662,7 @@ async function setMissionStart(req, res, mClient) {
     hsetValue(redisClient, roomKey, 'mission_id', currentMission)
     //let result1 = await redisClient.hsetValue(roomKey, 'sequence', sequence)
     hsetValue(redisClient, roomKey, 'sequence', sequence)
+    sequenceObj[room_id] = sequence
     //result1 = await redisClient.hsetValue(mac1, 'end', newtime)
     hsetValue(redisClient, mac1, 'end', newtime)
     //result1 = await redisClient.hsetValue(mac2, 'start', newtime)
