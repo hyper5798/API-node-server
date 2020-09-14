@@ -30,7 +30,6 @@ let missionObj = {}
 let scriptObj = {}
 let actionScript = {}
 let action = {}
-let macObj = {}
 let trCount = 0
 let rCount = 0
 let actionCount = 0
@@ -343,8 +342,8 @@ function decode_base64(str) {
 async function setMissionAction(req, res, mClient) {
   try {
     //let topic = mqttConfig.dlRoomTopic//Escape dl topic
-    let time = new Date().toISOString()
-    console.log(time+' setMissionAction -------------------');
+    let nTime = new Date().toISOString()
+    console.log(nTime+' setMissionAction -------------------');
     actionCount++;
     let redisClient = new redisHandler(0)
     redisClient.connect()
@@ -358,8 +357,10 @@ async function setMissionAction(req, res, mClient) {
     let idList = []
     let roomKey = 'room'+room_id
 
-    clean = await redisClient.hsetValue(roomKey, 'start', time)
-    clean = await redisClient.hsetValue(roomKey, 'sequence', 1)
+    //clean = await redisClient.hsetValue(roomKey, 'start', nTime)
+    hsetValue(redisClient, roomKey, 'start', nTime)
+    //clean = await redisClient.hsetValue(roomKey, 'sequence', 1)
+    hsetValue(redisClient, roomKey, 'sequence', 1)
 
     let teamUser = await dataResources.getTeamUser(user_id)
     if(teamUser === null) 
@@ -376,9 +377,12 @@ async function setMissionAction(req, res, mClient) {
     } else {
       room = JSON.parse(JSON.stringify(roomObj[room_id]))
     }
-    clean = await redisClient.hsetValue(roomKey,'room_name', room.room_name)
-    clean = await redisClient.hsetValue(roomKey,'pass_time', room.pass_time)
-    clean = await redisClient.hsetValue(roomKey,'team_id', teamUser.team_id)
+    //clean = await redisClient.hsetValue(roomKey,'room_name', room.room_name)
+    hsetValue(redisClient, roomKey, 'room_name', room.room_name)
+    //clean = await redisClient.hsetValue(roomKey,'pass_time', room.pass_time)
+    hsetValue(redisClient, roomKey, 'pass_time', room.pass_time)
+    //clean = await redisClient.hsetValue(roomKey,'team_id', teamUser.team_id)
+    hsetValue(redisClient, roomKey, 'team_id', teamUser.team_id)
 
     //Get all of missions of room
     if(missionObj[room_id] === undefined || typeof(missionObj[room_id]) != 'object') {
@@ -443,16 +447,19 @@ async function setMissionAction(req, res, mClient) {
         //redisClient.hsetValue(roomKey, mission.sequence, mac)
         mStr = mStr + mission.macAddr + ','
       } 
-      //clean = await redisClient.hsetValue(missionkey, 'mission_id', mission.id)
-      clean = await redisClient.hsetValue(mac, 'room_id', room_id)
-      clean = await redisClient.hsetValue(mac, 'sequence', mission.sequence)
-      clean = await redisClient.hsetValue(mac, 'mission_id', mission.id)
-      clean = await redisClient.hsetValue(mac, 'mission_name', mission.mission_name)
-      //clean = await redisClient.hsetValue(missionkey, 'device_id', mission.device_id)
+
+      //clean = await redisClient.hsetValue(mac, 'room_id', room_id)
+      hsetValue(redisClient, mac, 'room_id', room_id)
+      //clean = await redisClient.hsetValue(mac, 'sequence', mission.sequence)
+      hsetValue(redisClient, mac, 'sequence', mission.sequence)
+      //clean = await redisClient.hsetValue(mac, 'mission_id', mission.id)
+      hsetValue(redisClient, mac, 'mission_id', mission.id)
+      
 
       //Jason add for set mission_id to room in redis
       if(mission.sequence == 1) {//First mission
-        clean = await redisClient.hsetValue(roomKey, 'mission_id', mission.id)
+        //clean = await redisClient.hsetValue(roomKey, 'mission_id', mission.id)
+        hsetValue(redisClient, roomKey, 'mission_id', mission.id)
       }
 
       //Filter sequence 0 -> for emergency no script
@@ -462,8 +469,10 @@ async function setMissionAction(req, res, mClient) {
     }
     mStr = mStr.substring(0,mStr.length-1);
     let arr = mStr.split(',')
-    clean = await redisClient.hsetValue(roomKey, 'count', arr.length )
-    clean = await redisClient.hsetValue(roomKey, 'macs', mStr )
+    //clean = await redisClient.hsetValue(roomKey, 'count', arr.length )
+    hsetValue(redisClient, roomKey, 'count', arr.length)
+    //clean = await redisClient.hsetValue(roomKey, 'macs', mStr )
+    hsetValue(redisClient, roomKey, 'macs', mStr)
 
     let target = null
     
@@ -477,9 +486,7 @@ async function setMissionAction(req, res, mClient) {
       mission['script'] = actionScript[mission.id]
       if(mission.sequence === 1) {
         target = mac
-        save2SendSocket(mClient, target, 1, time)
-        //First mission start
-        clean = await redisClient.hsetValue(target, 'start', time)
+        save2SendSocket(mClient, target, 1, nTime)
       }
       //Send pass of script to node by MQTT
       if(mac != undefined && mission.sequence != 0) {
@@ -509,12 +516,14 @@ async function setMissionRecord(req, res, mClient, status) {
     let redisClient = new redisHandler(0)
     redisClient.connect()
     let room_id = req.body.room_id || req.query.room_id
+    console.log('room_id :'+room_id)
     if(room_id === undefined) {
       console.log('????? missPara room_id')
       errorObj.push(mytime+'-missPara room_id')
       return resResources.missPara(res)
     }
-        
+    console.log('action[room_id] :'+ action[room_id])
+    
     if(action[room_id] !=1) {
       errorObj.push(mytime+' - action[room_id] !=1')
       console.log('????? action[room_id] !=1 -> notAllowed')
@@ -525,8 +534,9 @@ async function setMissionRecord(req, res, mClient, status) {
     //Set status
     action[room_id] = status
     
-    //Get mac
+    //Get sequence
     let sequence = await redisClient.hgetValue(roomKey, 'sequence')
+    console.log('sequence :'+sequence)
     if(sequence === null) {
       errorObj.push(mytime+' - sequence null')
       console.log('????? sequence from redis (room)is null ')
@@ -535,6 +545,7 @@ async function setMissionRecord(req, res, mClient, status) {
     
     let index = parseInt(sequence) - 1
     let str = await redisClient.hgetValue(roomKey, 'macs')
+    console.log('macs:'+str)
     if(str === null) {
       errorObj.push(mytime+' - macs null')
       console.log('????? macs from redis (room) is null ')
@@ -544,8 +555,10 @@ async function setMissionRecord(req, res, mClient, status) {
     let mac = arr[index] 
     
     //Set end time to redis
-    test = await redisClient.hsetValue(mac, 'end', mytime)
-    test = await redisClient.hsetValue(roomKey, 'end', mytime)
+    //test = await redisClient.hsetValue(mac, 'end', mytime)
+    hsetValue(redisClient, mac, 'end', mytime)
+    //test = await redisClient.hsetValue(roomKey, 'end', mytime)
+    hsetValue(redisClient, roomKey, 'end', mytime)
     //Save report and snd socket to web
     save2SendSocket(mClient, mac, status, mytime)
     //Save record for mission in setMissionRecord
@@ -578,14 +591,14 @@ function getDiff(start_time, end_tme) {
 
 async function setMissionStart(req, res, mClient) {
   try {
-    let mytime = new Date().toISOString()
-    console.log(mytime + ' setMissionStart -------------------')
+    let newtime = new Date().toISOString()
+    console.log(newtime + ' setMissionStart -------------------')
     let redisClient = new redisHandler(0);
     redisClient.connect();
     let room_id = req.body.room_id || req.query.room_id
     let sequence = req.body.sequence || req.query.sequence
 
-    if(room_id === undefined || sequence === null)
+    if(room_id === undefined || sequence === null) 
         return resResources.missPara(res)
     
     let roomKey = 'room'+room_id
@@ -595,6 +608,8 @@ async function setMissionStart(req, res, mClient) {
     console.log(count)
 
     if(count === null) {
+      errorObj.push(newtime + ' - count null')
+      console.log('????? macs from redis (room) is null ')
       return resResources.notAllowed(res, 'No action yet')
     }
 
@@ -603,11 +618,13 @@ async function setMissionStart(req, res, mClient) {
    
     if(sequence > count) {
       console.log('sequence > count -> Not found sequence')
+      errorObj.push(newtime + ' - sequence > count')
       return resResources.notFound(res, 'Not found sequence')
     }  
      
     if(sequence < 2) {
       console.log('sequence < 2 -> Sequence is less then 2')
+      errorObj.push(newtime + ' - sequence < 2')
       return resResources.notAllowed(res, 'Sequence is less then 2')
     }
       
@@ -623,16 +640,21 @@ async function setMissionStart(req, res, mClient) {
     let mac1 = arr[index-1]
     
     //Jason add for set mission_id to room in redis
-    save2SendSocket(mClient, mac1, 2, mytime)
+    save2SendSocket(mClient, mac1, 2, newtime)
     
     let currentMission = await redisClient.hgetValue(mac2, 'mission_id')
-    let result1 = await redisClient.hsetValue(roomKey, 'mission_id', currentMission)
-    result1 = await redisClient.hsetValue(mac1, 'end', mytime)
-    result1 = await redisClient.hsetValue(mac2, 'start', mytime)
-    result1 = await redisClient.hsetValue(roomKey, 'sequence', sequence)
+    //let result1 = await redisClient.hsetValue(roomKey, 'mission_id', currentMission)
+    hsetValue(redisClient, roomKey, 'mission_id', currentMission)
+    //let result1 = await redisClient.hsetValue(roomKey, 'sequence', sequence)
+    hsetValue(redisClient, roomKey, 'sequence', sequence)
+    //result1 = await redisClient.hsetValue(mac1, 'end', newtime)
+    hsetValue(redisClient, mac1, 'end', newtime)
+    //result1 = await redisClient.hsetValue(mac2, 'start', newtime)
+    hsetValue(redisClient, mac2, 'start', newtime)
+  
     console.log('mac2 :'+ mac2)
     console.log('mission_id from mac2:'+currentMission)
-    save2SendSocket(mClient, mac2, 1, mytime)
+    save2SendSocket(mClient, mac2, 1, newtime)
     //Save record for mission in setMissionStart
     if(isTest === false) {
       let check = await saveRecord(room_id, mac1)
@@ -724,11 +746,22 @@ function getRandom(x){
   return Math.floor(Math.random()*x);
 };
 
-function hsetValue(key, fieids, value) {
+/*function hsetValue(key, fieids, value) {
   let redisClient = new redisHandler(0);
   redisClient.connect();
   redisClient.hsetValue(key, fieids, value);
+}*/
+
+async function hsetValue(client, key, fieids, value) {
+  let num = 0
+  let myResult
+  while(myResult !=1 && num <3) {
+    myResult = await client.hsetValue(key, fieids, value)
+    num++
+  }
+  return myResult
 }
+
 
 function hgetValue(key, fieids, value) {
   let redisClient = new redisHandler(0);
