@@ -25,6 +25,7 @@ const Command = require('./db/models').command
 const mqttConfig = require('./config/mqtt.json')
 const dataResources = require('./lib/dataResources')
 const redisHandler  = require('./modules/redisHandler')
+const file = require('./modules/fileTools')
 let roomObj = {}
 let missionObj = {}
 let scriptObj = {}
@@ -36,6 +37,7 @@ let actionCount = 0
 let errorObj = []
 let sequenceObj = {}
 let macObj = {}
+let roomPath = './config/room.json';
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
@@ -354,7 +356,17 @@ async function setMissionAction(req, res, mClient) {
     let room_id = req.body.room_id || req.query.room_id
     if(user_id === undefined || room_id === undefined)
         return resResources.missPara(res)
-    
+    //Set default action
+    if(action === undefined || action === null) {
+      action = {}
+    }
+    if(action[room_id] === undefined || action[room_id] === null) {
+      action[room_id] = {}
+    }
+
+    //Get mission and random script & action = 1 => init room and mission for redis
+    action[room_id]['status'] = 1
+    //Delete emergency mission
     
     let idList = []
     let roomKey = 'room'+room_id
@@ -363,7 +375,8 @@ async function setMissionAction(req, res, mClient) {
     hsetValue(redisClient, roomKey, 'start', nTime)
     //clean = await redisClient.hsetValue(roomKey, 'sequence', 1)
     hsetValue(redisClient, roomKey, 'sequence', 1)
-    sequenceObj[room_id] = 1
+    //sequenceObj[room_id] = 1
+    action[room_id]['sequence'] = 1
 
     let teamUser = await dataResources.getTeamUser(user_id)
     if(teamUser === null) 
@@ -431,14 +444,7 @@ async function setMissionAction(req, res, mClient) {
       let item = teamUsers[i]
         idList.push(item.user_id)
     }
-    //Set default action
-    if(action[room_id] === undefined) {
-      action[room_id] = 0
-    }
-
-    //Get mission and random script & action = 1 => init room and mission for redis
-    action[room_id] = 1
-    //Delete emergency mission
+    
     
     let mStr = ''
     for(let i=0;i<missions.length;i++) {
@@ -472,11 +478,12 @@ async function setMissionAction(req, res, mClient) {
     }
     mStr = mStr.substring(0,mStr.length-1);
     let arr = mStr.split(',')
-    //clean = await redisClient.hsetValue(roomKey, 'count', arr.length )
     hsetValue(redisClient, roomKey, 'count', arr.length)
-    //clean = await redisClient.hsetValue(roomKey, 'macs', mStr )
     hsetValue(redisClient, roomKey, 'macs', mStr)
-    macObj[room_id] = mStr
+    //macObj[room_id] = mStr
+    action[room_id]['count'] = arr.length
+    action[room_id]['macs'] = mStr
+    file.saveJsonToFile(roomPath,action)
     let target = null
     
     //Set script to mission
@@ -525,17 +532,19 @@ async function setMissionRecord(req, res, mClient, status) {
       errorObj.push(mytime+'-missPara room_id')
       return resResources.missPara(res)
     }
-    console.log('action[room_id] :'+ action[room_id])
-    
-    if(action[room_id] !=1) {
-      errorObj.push(mytime+' - action[room_id] !=1')
-      console.log('????? action[room_id] !=1 -> notAllowed')
-      return resResources.notAllowed(res,('status:'+action[room_id]))
+    console.log('action[room_id][status] :'+ action[room_id]['status'])
+    if(action[room_id] === undefined || action[room_id] === null) {
+      action = file.getJsonFromFile(roomPath)
+    }
+
+    if(action[room_id]['status'] !=1) {
+      errorObj.push(mytime+' - action[room_id][status] !=1')
+      console.log('????? action[room_id][status] !=1 -> notAllowed')
+      return resResources.notAllowed(res,('status:'+action[room_id]['status']))
     }
     let roomKey = 'room'+room_id
     console.log('roomKey:'+roomKey)
-    //Set status
-    action[room_id] = status
+    
     
     //Get sequence
     let sequence
@@ -544,7 +553,9 @@ async function setMissionRecord(req, res, mClient, status) {
     sequence = null
     console.log('sequence :'+sequence)
     if(sequence === null) {
-      sequence = sequenceObj[room_id]
+      //sequence = sequenceObj[room_id]
+      action = file.getJsonFromFile(roomPath)
+      sequence = action[room_id]['sequence']
     }
     if(sequence === null) {
       errorObj.push(mytime+' - sequence null')
@@ -555,14 +566,20 @@ async function setMissionRecord(req, res, mClient, status) {
     let index = parseInt(sequence) - 1
     let str = await redisClient.hgetValue(roomKey, 'macs')
     console.log('macs:'+str)
+    str = null
     if(str === null) {
-      str = macObj[room_id]
+      //str = macObj[room_id]
+      action = file.getJsonFromFile(roomPath)
+      str = action[room_id]['macs']
     }
     if(str === null) {
       errorObj.push(mytime+' - macs null')
       console.log('????? macs from redis (room) is null ')
       return resResources.notAllowed(res, 'No action yet')
     }
+    //Set status
+    action[room_id]['status'] = status
+    file.saveJsonToFile(roomPath, action)
     let arr = str.split(',')
     let mac = arr[index] 
     
@@ -584,8 +601,14 @@ async function setMissionRecord(req, res, mClient, status) {
 
       console.log('actionCount'+actionCount+',rCount :'+rCount + ', trCount :'+trCount)
     }
-    
-    return resResources.doSuccess(res, 'Stop the game')
+    let message = 'Stop the mission'
+    if(status === 3) {
+      message = 'Pass the mission'
+    } else {
+      message = 'Fail the mission'
+    }
+
+    return resResources.doSuccess(res, message)
   } catch (error) {
     resResources.catchError(res, error.message)
   }
@@ -612,12 +635,19 @@ async function setMissionStart(req, res, mClient) {
 
     if(room_id === undefined || sequence === null) 
         return resResources.missPara(res)
+    if(action[room_id] === undefined || action[room_id] === null ) {
+      action = file.getJsonFromFile(roomPath)
+    }
     
     let roomKey = 'room'+room_id
     console.log('roomKey :'+roomKey +', sequence:'+sequence)
     let count = await redisClient.hgetValue(roomKey, 'count')
     console.log('From redis count :')
     console.log(count)
+    if(count === null) {
+      action = file.getJsonFromFile(roomPath)
+      count = action[room_id]['count']
+    }
 
     if(count === null) {
       errorObj.push(newtime + ' - count null')
@@ -644,7 +674,9 @@ async function setMissionStart(req, res, mClient) {
     let index = sequence - 1 
     let str = await redisClient.hgetValue(roomKey, 'macs')
     if(str === null) {
-      str = macObj[room_id]
+      //str = macObj[room_id]
+      let json = file.getJaonFile(roomPath)
+      str = json[room_id]['macs']
     }
     if(str === null) {
       console.log('macs from redis is null')
@@ -658,16 +690,16 @@ async function setMissionStart(req, res, mClient) {
     save2SendSocket(mClient, mac1, 2, newtime)
     
     let currentMission = await redisClient.hgetValue(mac2, 'mission_id')
-    //let result1 = await redisClient.hsetValue(roomKey, 'mission_id', currentMission)
+    
     hsetValue(redisClient, roomKey, 'mission_id', currentMission)
-    //let result1 = await redisClient.hsetValue(roomKey, 'sequence', sequence)
     hsetValue(redisClient, roomKey, 'sequence', sequence)
-    sequenceObj[room_id] = sequence
-    //result1 = await redisClient.hsetValue(mac1, 'end', newtime)
     hsetValue(redisClient, mac1, 'end', newtime)
-    //result1 = await redisClient.hsetValue(mac2, 'start', newtime)
     hsetValue(redisClient, mac2, 'start', newtime)
-  
+
+    //sequenceObj[room_id] = sequence
+    action[room_id]['sequence'] = sequence
+    file.saveJsonToFile(roomPath, action)
+    
     console.log('mac2 :'+ mac2)
     console.log('mission_id from mac2:'+currentMission)
     save2SendSocket(mClient, mac2, 1, newtime)
@@ -700,9 +732,11 @@ async function getStatus(req, res) {
     let diff = getDiff(start, now)
     let countdown = pass_time - diff
     
-    if(action[room_id] == undefined)
-      action[room_id] = 0
-    let data = {"countdown":countdown, "status": action[room_id]}
+    if(action[room_id] === undefined || action[room_id]['status'] === undefined) {
+      action = file.getJsonFromFile(roomPath)
+    }
+      
+    let data = {"countdown":countdown, "status": action[room_id]['status']}
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
     resResources.catchError(res, error.message)
