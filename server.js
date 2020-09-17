@@ -776,16 +776,29 @@ async function getStatus(req, res) {
       let pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
       sequence = await redisClient.hgetValue(roomKey, 'sequence')
       
-      if(start === null || pass_time === null) {
+      if(start === null ) {
         action = file.getJsonFromFile(roomPath)
         start = action[room_id]['start']
+      }
+      if(pass_time === null ) {
+        action = file.getJsonFromFile(roomPath)
         pass_time = action[room_id]['pass_time']
+      }
+      if(sequence === null ) {
+        action = file.getJsonFromFile(roomPath)
         sequence = action[room_id]['sequence']
       }
       pass_time = parseInt(pass_time) 
+      sequence = parseInt(sequence)
       let now = new Date().toISOString()
       let diff = getDiff(start, now)
       countdown = pass_time - diff
+      countdown = 0
+
+      if(countdown <= 0) {
+        action[room_id]['status'] = 4
+        countdown = 0
+      }
     } 
     let data = {"countdown":countdown, "status": action[room_id]['status'], "sequence":sequence}
     return resResources.getDtaSuccess(res, data)
