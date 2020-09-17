@@ -49,6 +49,7 @@ const setting = {
     }    // enables global context
 }
 
+
 /*let options = {
   swaggerDefinition: {
     info: {
@@ -76,6 +77,8 @@ const setting = {
   basedir: __dirname, //app absolute path
   files: ['./controllers/*.js'] //Path to the API handle folder
 }*/
+
+
 
 
 module.exports = async function createServer () {
@@ -363,21 +366,14 @@ async function setMissionAction(req, res, mClient) {
       action[room_id] = {}
     }
 
-    if(action[room_id]['status'] === undefined || action[room_id]['status'] === null) {
-      action[room_id]['status'] = 1
-    } else if(action[room_id]['status'] === 1){
+    if(action[room_id]['status'] === 1){
       return resResources.notAllowed(res, 'Already acted')
-    } else {
-      action[room_id]['status'] = 1
     }
-    let clean = await redisClient.flush()
+    
     
     let idList = []
     let roomKey = 'room'+room_id
     
-    hsetValue(redisClient, roomKey, 'start', nTime)
-    hsetValue(redisClient, roomKey, 'sequence', 1)
-    action[room_id]['sequence'] = 1
 
     let teamUser = await dataResources.getTeamUser(user_id)
     if(teamUser === null) 
@@ -394,9 +390,17 @@ async function setMissionAction(req, res, mClient) {
     } else {
       room = JSON.parse(JSON.stringify(roomObj[room_id]))
     }
+    let clean = await redisClient.flush()
+    
+    hsetValue(redisClient, roomKey, 'start', nTime)
+    hsetValue(redisClient, roomKey, 'sequence', 1)
     hsetValue(redisClient, roomKey, 'room_name', room.room_name)
     hsetValue(redisClient, roomKey, 'pass_time', room.pass_time)
     hsetValue(redisClient, roomKey, 'team_id', teamUser.team_id)
+    action[room_id]['status'] = 1
+    action[room_id]['start'] = nTime
+    action[room_id]['pass_time'] = room.pass_time
+    action[room_id]['team_id'] = teamUser.team_id
 
     //Get all of missions of room
     if(missionObj[room_id] === undefined || typeof(missionObj[room_id]) != 'object') {
@@ -526,11 +530,11 @@ async function setMissionRecord(req, res, mClient, status) {
       errorObj.push(mytime+'-missPara room_id')
       return resResources.missPara(res)
     }
-    console.log('action[room_id][status] :'+ action[room_id]['status'])
+    
     if(action[room_id] === undefined || action[room_id] === null) {
-      action = file.getJsonFromFile(roomPath)
+      return resResources.notAllowed(res,'No action')
     }
-
+    console.log('action[room_id][status] :'+ action[room_id]['status'])
     if(action[room_id]['status'] !=1) {
       errorObj.push(mytime+' - action[room_id][status] !=1')
       console.log('????? action[room_id][status] !=1 -> notAllowed')
@@ -594,8 +598,10 @@ async function setMissionRecord(req, res, mClient, status) {
     let message = 'Stop the mission'
     if(status === 3) {
       message = 'Pass the mission'
-    } else {
+    } else if(status === 4){
       message = 'Fail the mission'
+    } else {
+      message = 'Stop the mission'
     }
 
     return resResources.doSuccess(res, message)
@@ -674,10 +680,9 @@ async function setMissionStart(req, res, mClient) {
 
     if(room_id === undefined || sequence === null) 
         return resResources.missPara(res)
-    if(action[room_id] === undefined || action[room_id] === null ) {
-      action = file.getJsonFromFile(roomPath)
+    if(action[room_id] === undefined || action[room_id] === null || action[room_id]['status'] != 1) {
+      return resResources.notAllowed(res, 'No action')
     }
-    
     let roomKey = 'room'+room_id
     console.log('roomKey :'+roomKey +', sequence:'+sequence)
     let count = await redisClient.hgetValue(roomKey, 'count')
@@ -713,7 +718,7 @@ async function setMissionStart(req, res, mClient) {
     let index = sequence - 1 
     let str = await redisClient.hgetValue(roomKey, 'macs')
     if(str === null) {
-      let json = file.getJaonFile(roomPath)
+      let json = file.getJsonFromFile(roomPath)
       str = json[room_id]['macs']
     }
     if(str === null) {
@@ -759,21 +764,33 @@ async function getStatus(req, res) {
   try {
     let room_id = req.body.room_id || req.query.room_id
     let roomKey = 'room'+room_id
-    let start = await hgetValue(roomKey, 'start')
-    let pass_time = await hgetValue(roomKey, 'pass_time')
-    if(start === undefined || pass_time === undefined) {
-      return resResources.notAllowed(res)
-    }
-    pass_time = parseInt(pass_time) 
-    let now = new Date().toISOString()
-    let diff = getDiff(start, now)
-    let countdown = pass_time - diff
     
-    if(action[room_id] === undefined || action[room_id]['status'] === undefined) {
+    if(action[room_id] === undefined) {
+      return resResources.getDtaSuccess(res, {"countdown":0, "status": 0, "sequence":0})
+    }
+    if(action[room_id]['status'] === undefined) {
       action = file.getJsonFromFile(roomPath)
     }
+    let status = action[room_id]['status']
+    let countdown = 0
+    let sequence = 0
+    if( status === 1) {//During in pass mission
+      let start = await hgetValue(roomKey, 'start')
+      let pass_time = await hgetValue(roomKey, 'pass_time')
+      sequence = await hgetValue(roomKey, 'sequence')
       
-    let data = {"countdown":countdown, "status": action[room_id]['status']}
+      if(start === null || pass_time === null) {
+        action = file.getJsonFromFile(roomPath)
+        start = action[room_id]['start']
+        pass_time = action[room_id]['pass_time']
+        sequence = action[room_id]['sequence']
+      }
+      pass_time = parseInt(pass_time) 
+      let now = new Date().toISOString()
+      let diff = getDiff(start, now)
+      countdown = pass_time - diff
+    } 
+    let data = {"countdown":countdown, "status": action[room_id]['status'], "sequence":sequence}
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
     resResources.catchError(res, error.message)
