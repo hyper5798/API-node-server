@@ -4,7 +4,7 @@
 /*!
  * Module dependencies
  */
-const isTest = true
+const isTest = true //true: no save record and team record
 const express = require('express')
 const responseTime = require('response-time')
 const responsePoweredBy = require('response-powered-by')
@@ -418,7 +418,7 @@ async function setMissionAction(req, res, mClient) {
         }
       }
     } 
-    file.saveJsonToFile(missionPath, missionObj)
+    
     
     //Get all of scripts of room
     let script = null
@@ -499,14 +499,16 @@ async function setMissionAction(req, res, mClient) {
       }
       //Send pass of script to node by MQTT
       if(mac != undefined && mission.sequence != 0  && mission.script != null) {
-        let pass = mission.script.pass
-        if(typeof pass === 'string')
-          pass = JSON.parse(pass)
-          let topic = 'YESIO/DL/'+mac
-        let message = JSON.stringify({"macAddr": mac, "pass": pass})
+        
+        if(typeof mission.script.pass === 'string') {
+          mission.script.pass = JSON.parse(mission.script.pass)
+        }
+        let topic = 'YESIO/DL/'+mac
+        let message = JSON.stringify({"macAddr": mac, "pass": mission.script.pass})
         mClient.sendMessage(topic, message)
       }
     }
+    file.saveJsonToFile(missionPath, missions)
     
     let data = {"room":room, "ids":idList, "missions":missions }
     return resResources.getDtaSuccess(res, data)
@@ -586,10 +588,10 @@ async function setMissionRecord(req, res, mClient, status) {
     save2SendSocket(mClient, mac, status, mytime)
     //Save record for mission in setMissionRecord
     if(isTest === false) {
-      let result = await saveRecord(room_id, mac)
+      let result = await saveRecord(redisClient, room_id, mac)
       if(result.id)
         rCount++;
-      let result2 = await saveTeamRecord(room_id, mac, status)
+      let result2 = await saveTeamRecord(redisClient, room_id, mac, status)
       if(result2.id)
         trCount++;
 
@@ -645,13 +647,8 @@ async function getData(req, res) {
       room = await dataResources.getRoom(room_id)
     }
     
-    let missions = null
-    if(missionObj && missionObj[room_id]) {
-      missions =  missionObj[room_id]
-    } else {
-      missionObj = file.getJsonFromFile(missionPath)
-      missions =  missionObj[room_id]
-    }
+    let missions = file.getJsonFromFile(missionPath)
+      
     let data = {"room":room, "ids":members, "missions":missions }
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
@@ -747,7 +744,7 @@ async function setMissionStart(req, res, mClient) {
     save2SendSocket(mClient, mac2, 1, newtime)
     //Save record for mission in setMissionStart
     if(isTest === false) {
-      let check = await saveRecord(room_id, mac1)
+      let check = await saveRecord(redisClient, room_id, mac1)
       if(check && check.id) 
         rCount++;
       /*console.log('--------- saveRecord-------- '+ new Date().toISOString())
@@ -765,19 +762,19 @@ async function getStatus(req, res) {
     let room_id = req.body.room_id || req.query.room_id
     let roomKey = 'room'+room_id
     
-    if(action[room_id] === undefined) {
-      return resResources.getDtaSuccess(res, {"countdown":0, "status": 0, "sequence":0})
-    }
-    if(action[room_id]['status'] === undefined) {
+    let redisClient = new redisHandler(0);
+    redisClient.connect();
+
+    if(action[room_id] === undefined || action[room_id]['status'] === undefined) {
       action = file.getJsonFromFile(roomPath)
     }
     let status = action[room_id]['status']
     let countdown = 0
     let sequence = 0
     if( status === 1) {//During in pass mission
-      let start = await hgetValue(roomKey, 'start')
-      let pass_time = await hgetValue(roomKey, 'pass_time')
-      sequence = await hgetValue(roomKey, 'sequence')
+      let start = await redisClient.hgetValue(roomKey, 'start')
+      let pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
+      sequence = await redisClient.hgetValue(roomKey, 'sequence')
       
       if(start === null || pass_time === null) {
         action = file.getJsonFromFile(roomPath)
@@ -797,12 +794,12 @@ async function getStatus(req, res) {
   }
 }
 
-async function saveRecord(id, mac) {
+async function saveRecord(client, id, mac) {
   let myKey = 'room'+id
-  let team_id = await hgetValue(myKey, 'team_id')
-  let mission_id = await hgetValue(mac, 'mission_id')
-  let start = await hgetValue(mac, 'start')
-  let end = await hgetValue(mac, 'end')
+  let team_id = await client.hgetValue(myKey, 'team_id')
+  let mission_id = await client.hgetValue(mac, 'mission_id')
+  let start = await client.hgetValue(mac, 'start')
+  let end = await client.hgetValue(mac, 'end')
   let diff = getDiff(start, end)
   let saveObj = {
     "team_id": team_id,
@@ -815,15 +812,15 @@ async function saveRecord(id, mac) {
   return dataResources.createRecord(saveObj)
 }
 
-async function saveTeamRecord(id, mac, status) {
+async function saveTeamRecord(client, id, mac, status) {
   let myKey = 'room'+id
-  let team_id = await hgetValue(myKey, 'team_id')
-  let team = await dataResources.getTeam(team_id)
-  let start = await hgetValue(myKey, 'start')
-  let end = await hgetValue(myKey, 'end')
+  let team_id = await client.hgetValue(myKey, 'team_id')
+  let team = await client.dataResources.getTeam(team_id)
+  let start = await client.hgetValue(myKey, 'start')
+  let end = await client.hgetValue(myKey, 'end')
   let diff = getDiff(start, end)
   let score = 0
-  let mission_id = await hgetValue(myKey, 'mission_id')
+  let mission_id = await client.hgetValue(myKey, 'mission_id')
   if(status == 3)
     score = 1
   let saveObj = {
@@ -867,13 +864,6 @@ async function hsetValue(client, key, fieids, value) {
     num++
   }
   return myResult
-}
-
-
-function hgetValue(key, fieids, value) {
-  let redisClient = new redisHandler(0);
-  redisClient.connect();
-  return redisClient.hgetValue(key, fieids, value)
 }
 
 function remove(key, field) {
