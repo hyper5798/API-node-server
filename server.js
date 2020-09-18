@@ -539,7 +539,7 @@ async function setMissionRecord(req, res, mClient, status) {
     console.log('room_id :'+room_id)
     if(room_id === undefined) {
       console.log('????? missPara room_id')
-      errorObj.push(mytime+'-missPara room_id')
+      //errorObj.push(mytime+'-missPara room_id')
       return resResources.missPara(res)
     }
     
@@ -548,7 +548,7 @@ async function setMissionRecord(req, res, mClient, status) {
     }
     console.log('action[room_id][status] :'+ action[room_id]['status'])
     if(action[room_id]['status'] !=1) {
-      errorObj.push(mytime+' - action[room_id][status] !=1')
+      //errorObj.push(mytime+' - action[room_id][status] !=1')
       console.log('????? action[room_id][status] !=1 -> notAllowed')
       return resResources.notAllowed(res,('status:'+action[room_id]['status']))
     }
@@ -566,7 +566,7 @@ async function setMissionRecord(req, res, mClient, status) {
       sequence = action[room_id]['sequence']
     }
     if(sequence === null) {
-      errorObj.push(mytime+' - sequence null')
+      //errorObj.push(mytime+' - sequence null')
       console.log('????? sequence from redis (room)is null ')
       sequence = 1;
     }
@@ -579,7 +579,7 @@ async function setMissionRecord(req, res, mClient, status) {
       str = action[room_id]['macs']
     }
     if(str === null) {
-      errorObj.push(mytime+' - macs null')
+      //errorObj.push(mytime+' - macs null')
       console.log('????? macs from redis (room) is null ')
       return resResources.notAllowed(res, 'No action yet')
     }
@@ -701,7 +701,7 @@ async function setMissionStart(req, res, mClient) {
     }
 
     if(count === null) {
-      errorObj.push(newtime + ' - count null')
+      //errorObj.push(newtime + ' - count null')
       console.log('????? macs from redis (room) is null ')
       return resResources.notAllowed(res, 'No action yet')
     }
@@ -711,13 +711,13 @@ async function setMissionStart(req, res, mClient) {
    
     if(sequence > count) {
       console.log('sequence > count -> Not found sequence')
-      errorObj.push(newtime + ' - sequence > count')
+      //errorObj.push(newtime + ' - sequence > count')
       return resResources.notFound(res, 'Not found sequence')
     }  
      
     if(sequence < 2) {
       console.log('sequence < 2 -> Sequence is less then 2')
-      errorObj.push(newtime + ' - sequence < 2')
+      //errorObj.push(newtime + ' - sequence < 2')
       return resResources.notAllowed(res, 'Sequence is less then 2')
     }
       
