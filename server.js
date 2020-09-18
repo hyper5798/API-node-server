@@ -374,15 +374,20 @@ async function setMissionAction(req, res, mClient) {
     let idList = []
     let roomKey = 'room'+room_id
     
-
+    console.log(new Date().toISOString()+' before get teamUser for team_id ----------')
     let teamUser = await dataResources.getTeamUser(user_id)
+    console.log(new Date().toISOString()+' after get teamUser for team_id ')
     if(teamUser === null) 
         return resResources.notAllowed(res, 'Not join team')
+    console.log(new Date().toISOString()+' before get teamUser for members ----------')
     let teamUsers = await dataResources.getTeamUsers(teamUser.team_id)
+    console.log(new Date().toISOString()+' after get teamUser for members')
     //Get room
     let room = null
     if(roomObj[room_id] === undefined || typeof(roomObj[room_id]) != 'object') {
+      console.log(new Date().toISOString()+' before get room ----------')
       room = await dataResources.getRoom(room_id)
+      console.log(new Date().toISOString()+' after get room')
       
       if(room === null ) 
         return resResources.notFound(res, 'Not found room')
@@ -405,7 +410,9 @@ async function setMissionAction(req, res, mClient) {
 
     //Get all of missions of room
     if(missionObj[room_id] === undefined || typeof(missionObj[room_id]) != 'object') {
+      console.log(new Date().toISOString()+' before get mission ----------')
       let mList = await dataResources.getMissions(room_id)
+      console.log(new Date().toISOString()+' after get mission')
       if(mList === null || mList.length === 0 ) 
         return resResources.notFound(res, 'Not found mission')
 
@@ -424,7 +431,9 @@ async function setMissionAction(req, res, mClient) {
     //Get all of scripts of room
     let script = null
     if(scriptObj[room_id] === undefined || typeof(scriptObj[room_id]) != 'object') {
+      console.log(new Date().toISOString()+' before get scripts ----------')
       let allList = await dataResources.getScripts(room_id)
+      console.log(new Date().toISOString()+' after get scripts')
       let test = {}
       //Group by mission id
       for(let i=0;i<allList.length;i++) {
