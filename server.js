@@ -398,6 +398,7 @@ async function setMissionAction(req, res, mClient) {
     hsetValue(redisClient, roomKey, 'pass_time', room.pass_time)
     hsetValue(redisClient, roomKey, 'team_id', teamUser.team_id)
     action[room_id]['status'] = 1
+    action[room_id]['sequence'] = 1
     action[room_id]['start'] = nTime
     action[room_id]['pass_time'] = room.pass_time
     action[room_id]['team_id'] = teamUser.team_id
