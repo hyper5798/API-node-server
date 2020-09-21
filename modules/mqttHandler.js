@@ -8,6 +8,7 @@ const io = require('socket.io-client');
 const appConfig = require('../config/app.json')
 let wsUrl ='http://localhost:'+appConfig.port
 const socket = io.connect(wsUrl, {reconnect: true});
+let macList = [];
 
 socket.on('connect',function(){
   socket.emit('mqtt_sub','**** mqtt_sub socket cient is ready');
@@ -104,7 +105,7 @@ class MqttHandler {
     return getAdjustObj(msg)
   }
 
-  saveMessage(obj) { 
+  saveMqttMessage(obj) { 
     return saveMessage(obj)
   }
 
@@ -136,23 +137,32 @@ async function swithObj (topic, msg) {
   let message = msg.toString()
   let obj = getJSONObj(message)
   let mac = obj.macAddr
-  let value = await util.hgetValue(mac,'sequence')
-  if( value === null) {
-    const Product = require('../db/models').product
-    let product = await Promise.resolve(Product.findOne({where: {"macAddr":mac}}))
-    if(product === null) {
-      console.log('???? '+ getDatestring() + ' drop mac : ' + mac);
-      return null
+  
+  try {
+    //console.log(macList.indexOf(mac))
+    if( macList.indexOf(mac)<0) {
+      const Product = require('../db/models').product
+      let product = await Promise.resolve(Product.findOne({where: {"macAddr":mac}}))
+      if(product === null) {
+        console.log('???? '+ getDatestring() + ' drop mac : ' + mac);
+        return null
+      } else {
+        macList.push(mac)
+      }
     }
+    if(topic.includes('YESIO/UL'))
+      handleUpload1(obj)
+    else if(topic.includes('GIOT-GW/UL'))
+      handleUpload2(obj)
+    else if(topic.includes('YESIO/DL'))
+      handleDownload(topic, msg)
+    else
+      console.log('No handler for topic %s', topic)
+  } catch (error) {
+    console.log(error.message)
   }
-  if(topic.includes('YESIO/UL'))
-    handleUpload1(obj)
-  else if(topic.includes('GIOT-GW/UL'))
-    handleUpload2(obj)
-  else if(topic.includes('YESIO/DL'))
-    handleDownload(topic, msg)
-  else
-    console.log('No handler for topic %s', topic)
+   
+  
 }
 
 
@@ -160,6 +170,9 @@ async function swithObj (topic, msg) {
 async function handleUpload1 (mObj) { 
   let obj = getAdjustObj(mObj);
   let result = await saveMessage (obj)
+  if(result.dataValues.id){
+    console.log(getDatestring() +' -> Save message success')
+  }
   //Jason add for only keep-alive and node-ack
   if(true) return;
   if(obj.type_id != 99) return;
@@ -197,9 +210,7 @@ async function handleUpload1 (mObj) {
   //For websocket to webui
   socket.emit('mqtt_sub',JSON.stringify(obj));
 
-  if(result.dataValues.id){
-    console.log(getDatestring() +' -> Save message success')
-  }
+  
 }
 
 //"ulTopic2": "GIOT-GW/UL/+"
