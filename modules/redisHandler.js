@@ -1,6 +1,8 @@
 const Redis = require('redis')
 const Bluebird = require('bluebird')
 const Promise = require('bluebird')
+const file = require('../modules/fileTools')
+let logPath = '../config/log.txt';
 const appConfig = require('../config/app.json')
 Bluebird.promisifyAll(Redis.RedisClient.prototype)
 Bluebird.promisifyAll(Redis.Multi.prototype)
@@ -22,6 +24,14 @@ class redisHandler {
 
     this.redisClient.on('connect', function () {
       console.log('Connected redis')
+    })
+
+    this.redisClient.on('disconnect', function () {
+      console.log('???? Redis disconnect on'+new Date().toISOString)
+    })
+
+    this.redisClient.on('error', function (err) {
+      console.log('???? '+err+' on '+new Date().toISOString)
     })
   }
 
@@ -60,6 +70,10 @@ class redisHandler {
   flush() {
     let result = this.redisClient.flushallAsync()
     return Promise.resolve(result)
+  }
+
+  quit() {
+    this.redisClient.quit()
   }
 }
 

@@ -373,8 +373,6 @@ async function setMissionAction(req, res, mClient) {
     let nTime = new Date().toISOString()
     console.log(nTime+' setMissionAction -------------------');
     actionCount++;
-    let redisClient = new redisHandler(0)
-    redisClient.connect()
     
     let user_id = req.body.user_id || req.query.user_id
     let room_id = req.body.room_id || req.query.room_id
@@ -464,7 +462,8 @@ async function setMissionAction(req, res, mClient) {
     }
     const scripts = sObj[room_id]
     let missions = mObj[room_id]
-
+    let redisClient = new redisHandler(0)
+    redisClient.connect()
     let clean = await redisClient.flush()
     
     if(isTest) {
@@ -519,6 +518,7 @@ async function setMissionAction(req, res, mClient) {
     let arr = mStr.split(',')
     hsetValue(redisClient, roomKey, 'count', arr.length)
     hsetValue(redisClient, roomKey, 'macs', mStr)
+    redisClient.quit()
     action[room_id]['count'] = arr.length
     action[room_id]['macs'] = mStr
     file.saveJsonToFile(actionPath,action)
@@ -586,8 +586,6 @@ async function setMissionStop(req, res, mClient, status) {
     //Get room key
     let mytime = new Date().toISOString()
     let test = null
-    let redisClient = new redisHandler(0)
-    redisClient.connect()
     let room_id = req.body.room_id || req.query.room_id
     
     if(room_id === undefined) {
@@ -604,6 +602,8 @@ async function setMissionStop(req, res, mClient, status) {
       showError('setMissionStop status !=1 -> 405')
       return resResources.notAllowed(res,('status:'+action[room_id]['status']))
     }
+    let redisClient = new redisHandler(0)
+    redisClient.connect()
     let roomKey = 'room'+room_id
     showLog('roomKey:'+roomKey)
     
@@ -660,6 +660,7 @@ async function setMissionStop(req, res, mClient, status) {
 
       showLog('actionCount'+actionCount+',rCount :'+rCount + ', trCount :'+trCount)
     }
+    redisClient.quit()
     let message = 'Stop the mission'
     if(status === 3) {
       message = 'Pass the mission'
@@ -682,8 +683,7 @@ async function getData(req, res) {
     let nTime = new Date().toISOString()
     console.log(nTime+' getData -------------------');
     actionCount++;
-    let redisClient = new redisHandler(0)
-    redisClient.connect()
+    
     let user_id = req.body.user_id || req.query.user_id
     let room_id = req.body.room_id || req.query.room_id
     if(user_id === undefined || room_id === undefined) {
@@ -693,8 +693,10 @@ async function getData(req, res) {
         
     let roomKey = 'room'+room_id
     let members = null
+    let redisClient = new redisHandler(0)
+    redisClient.connect()
     let str = await redisClient.hgetValue(roomKey, 'members')
-    
+    redisClient.quit()
     if(str === null) {
       members = action[room_id]['members']
     } else {
@@ -742,8 +744,7 @@ async function setMissionStart(req, res, mClient) {
   try {
     let newtime = new Date().toISOString()
     showLog('setMissionStart -------------------')
-    let redisClient = new redisHandler(0);
-    redisClient.connect();
+    
     let room_id = req.body.room_id || req.query.room_id
     let sequence = req.body.sequence || req.query.sequence
 
@@ -758,7 +759,8 @@ async function setMissionStart(req, res, mClient) {
     }
     let roomKey = 'room'+room_id
     showLog('roomKey :'+roomKey +', sequence:'+sequence)
-
+    let redisClient = new redisHandler(0);
+    redisClient.connect();
     let count = await redisClient.hgetValue(roomKey, 'count')
     let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
     if(currentSequence === null) {
@@ -823,7 +825,7 @@ async function setMissionStart(req, res, mClient) {
     hsetValue(redisClient, roomKey, 'sequence', sequence)
     hsetValue(redisClient, mac1, 'end', newtime)
     hsetValue(redisClient, mac2, 'start', newtime)
-
+    redisClient.quit()
     action[room_id]['sequence'] = sequence
     file.saveJsonToFile(actionPath, action)
     
@@ -855,9 +857,6 @@ async function getStatus(req, res) {
       return resResources.missPara(res)
     }
     let roomKey = 'room'+room_id
-    
-    let redisClient = new redisHandler(0);
-    redisClient.connect();
 
     if(action[room_id] === undefined || action[room_id]['status'] === undefined) {
       action = file.getJsonFromFile(actionPath)
@@ -866,10 +865,14 @@ async function getStatus(req, res) {
     let countdown = 0
     let sequence = 0
     if( status === 1) {//During in pass mission
+
+      let redisClient = new redisHandler(0);
+      redisClient.connect()
       let start = await redisClient.hgetValue(roomKey, 'start')
       let pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
       sequence = await redisClient.hgetValue(roomKey, 'sequence')
-      
+      redisClient.quit()
+
       if(start === null ) {
         action = file.getJsonFromFile(actionPath)
         start = action[room_id]['start']
