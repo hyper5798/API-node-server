@@ -38,6 +38,8 @@ let errorObj = []
 let roomPath = './config/room.json';
 let missionPath = './config/mission.json';
 let actionPath = './config/action.json';
+let errorPath = './config/error.txt';
+let logPath = './config/log.txt';
 let memberObj = {}
 
 //Jason add on 2020.02.16 - start
@@ -84,7 +86,7 @@ const setting = {
 
 
 module.exports = async function createServer () {
-  
+  init()
   const app = express()
   let mqttClient = new mqttHandler();
   mqttClient.connect();
@@ -129,18 +131,18 @@ module.exports = async function createServer () {
 
   app.get("/escape/stop", function(req, res) {
     showLog('setMissionStop -------------------')
-    return setMissionRecord(req, res, mqttClient, 6)
+    return setMissionStop(req, res, mqttClient, 6)
   })
 
   app.get("/escape/pass", function(req, res) {
     showLog('setMissionPass -------------------')
-    return setMissionRecord(req, res, mqttClient, 3)
+    return setMissionStop(req, res, mqttClient, 3)
   })
 
   app.get("/escape/fail", function(req, res) {
     //For mission fail
     showLog('setMissionFail -------------------')
-    return setMissionRecord(req, res, mqttClient, 4)
+    return setMissionStop(req, res, mqttClient, 4)
   })
 
   app.get("/escape/start", function(req, res) {
@@ -299,15 +301,22 @@ async function sendCommand(req, res, mqttClient) {
     if(Commands.length>0){
       console.log(Commands[0]['command'])
       let cmd = Commands[0]['command']
-      if(cmd == null)
+      if(cmd == null) {
+        showError('404 not found command')
         return resResources.notFound(res)
+      }
+        
       let message = JSON.stringify({"macAddr": macAddr, "cmd": cmd})
       mqttClient.sendMessage(topic, message);
       return resResources.doSuccess(res, "Message sent to mqtt")
     }
-    else
+    else {
+      showError('404 not found Commands')
       return resResources.notFound(res)
+    }
+      
   } catch (error) {
+    showError(error.message)
     resResources.catchError(res, error.message)
   }
 }
@@ -334,15 +343,22 @@ async function sendControl(req, res, mqttClient) {
     if(Commands.length>0){
       console.log(Commands[0]['command'])
       let cmd = Commands[0]['command']
-      if(cmd == null)
+      if(cmd == null) {
+        showError('404 no found command')
         return resResources.notFound(res)
+      }
+        
       let message = JSON.stringify({"macAddr": arr[0], "cmd": cmd})
       mqttClient.sendMessage(topic, message);
       return resResources.doSuccess(res, "Control sent to mqtt")
     }
-    else
+    else {
+      showError('404 no found command')
       return resResources.notFound(res)
+    }
+      
   } catch (error) {
+    showError(error.message)
     resResources.catchError(res, error.message)
   }
 }
@@ -362,8 +378,11 @@ async function setMissionAction(req, res, mClient) {
     
     let user_id = req.body.user_id || req.query.user_id
     let room_id = req.body.room_id || req.query.room_id
-    if(user_id === undefined || room_id === undefined)
-        return resResources.missPara(res)
+    if(user_id === undefined || room_id === undefined) {
+      showError('setMissionAction miss param ')
+      return resResources.missPara(res)
+    }
+        
     //Set default action
     if(action === undefined || action === null) {
       action = {}
@@ -373,6 +392,7 @@ async function setMissionAction(req, res, mClient) {
     }
 
     if(action[room_id]['status'] === 1){
+      showError('setMissionAction status = 1 -> 405 Already acted')
       return resResources.notAllowed(res, 'Already acted')
     }
     
@@ -383,7 +403,7 @@ async function setMissionAction(req, res, mClient) {
       const obj = await dataResources.getMembers(user_id)
       showLog('1.After get members')
       if(obj === null) {
-        showLog('???? Not join team')
+        showError('setMissionAction members is null -> 405 Not join team')
         return resResources.notAllowed(res, 'Not join team')
       }
       // memberObj[room_id] = obj
@@ -400,6 +420,7 @@ async function setMissionAction(req, res, mClient) {
     
     user_id = parseInt(user_id)
     if(members.indexOf(user_id) < 0) {
+      showError('setMissionAction 405 Not join team')
       return resResources.notAllowed(res, 'Not join team')
     }
     
@@ -414,7 +435,7 @@ async function setMissionAction(req, res, mClient) {
       room = roomObj[room_id]
     }
     if(room === null ) {
-      showLog('???? Not found room')
+      showError('setMissionAction 404 Not found room')
       return resResources.notFound(res, 'Not found room')
     }
 
@@ -423,8 +444,11 @@ async function setMissionAction(req, res, mClient) {
       showLog('3. Before get mission')
       let mList = await dataResources.getMissions(room_id)
       showLog('3. After get mission')
-      if(mList === null || mList.length === 0 ) 
+      if(mList === null || mList.length === 0 ) {
+        showError('setMissionAction 404 Not found mission')
         return resResources.notFound(res, 'Not found mission')
+      }
+        
       mObj[room_id] = mList
     } 
     
@@ -433,6 +457,10 @@ async function setMissionAction(req, res, mClient) {
       showLog('4. Before get getGroupScript')
       sObj[room_id] = await dataResources.getGroupScript(room_id)
       showLog('4. After get getGroupScript')
+      if(sObj[room_id] === null || sObj[room_id].length === 0 ) {
+        showError('setMissionAction 404 Not found script')
+        return resResources.notFound(res, 'Not found script')
+      }
     }
     const scripts = sObj[room_id]
     let missions = mObj[room_id]
@@ -441,10 +469,9 @@ async function setMissionAction(req, res, mClient) {
     
     if(isTest) {
       console.log('*** Show room, missions and scripts ----------------------------------------------')
-      console.log(room)
-      console.log(missions)
-      console.log(scripts)
-      console.log('*** Show missions and scripts ----------------------------------------------')
+      console.log(room.room_name)
+      console.log('missions.length : '+missions.length)
+      console.log('scripts.length : '+ Object.keys(scripts).length)
     }
        
     action[room_id]['status'] = 1
@@ -471,9 +498,10 @@ async function setMissionAction(req, res, mClient) {
       let mission = missions[i]
       let mac = mission.macAddr
       //Filter emergency mac of room 
-      if(mission.sequence != 0) {//Mission 0 for emergency
-        mStr = mStr + mission.macAddr + ','
+      if(mission.sequence === null || mission.sequence === 0) {//Mission 0 for emergency
+        continue
       } 
+      mStr = mStr + mission.macAddr + ','
 
       hsetValue(redisClient, mac, 'room_id', room_id)
       hsetValue(redisClient, mac, 'sequence', mission.sequence)
@@ -484,10 +512,6 @@ async function setMissionAction(req, res, mClient) {
         hsetValue(redisClient, roomKey, 'mission_id', mission.id)
         hsetValue(redisClient, mac, 'start', nTime)
       }
-
-      //Filter sequence 0 -> for emergency no script
-      if(mission.sequence == 0)
-        continue
       actionScript[mission.id] = getScript(scripts[mission.id])
     }
 
@@ -538,6 +562,7 @@ async function setMissionAction(req, res, mClient) {
     //console.log(list)
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
+    showError('setMissionAction '+error.message)
     resResources.catchError(res, error.message)
   }
 }
@@ -556,28 +581,7 @@ const sendMQTTMessage = (client , topic, message, time ) => {
   });
 };
 
-//Send socket with delay time
-const sendSocketMessage = (client , mac, status, recv, time ) => {
-  return new Promise((resolve, reject) => {
-      let msg = {"macAddr":mac,"data":{"key1":status},"fport":99, "recv":recv}
-      let mobj = client.adjustObj(msg)
-      
-      if (mobj) {
-          setTimeout(() => {
-            client.sendSocket(mobj)
-            console.log(mobj)
-            console.log('---------- before save message '+ new Date().toISOString())
-            client.saveMessage(mobj)
-            console.log('---------- after save message '+ new Date().toISOString())
-            resolve()
-          }, time);
-      } else {
-          reject();
-      }
-  });
-};
-
-async function setMissionRecord(req, res, mClient, status) {
+async function setMissionStop(req, res, mClient, status) {
   try {
     //Get room key
     let mytime = new Date().toISOString()
@@ -587,20 +591,17 @@ async function setMissionRecord(req, res, mClient, status) {
     let room_id = req.body.room_id || req.query.room_id
     
     if(room_id === undefined) {
-      showLog('???? missPara room_id')
-      errorObj.push(mytime+'-missPara room_id')
+      showError('setMissionStop missPara room_id')
       return resResources.missPara(res)
     }
     
     if(action[room_id] === undefined || action[room_id] === null) {
-      showLog('???? No action')
-      errorObj.push(mytime+'- No action')
-      return resResources.notAllowed(res,'No action')
+      showError('setMissionStop No action')
+      return resResources.notAllowed(res,'action[room_id] === undefined -> 405')
     }
     showLog('action[room_id][status] :'+ action[room_id]['status'])
     if(action[room_id]['status'] !=1) {
-      errorObj.push(mytime+' - action[room_id][status] !=1')
-      showLog('???? action[room_id][status] !=1 -> notAllowed')
+      showError('setMissionStop status !=1 -> 405')
       return resResources.notAllowed(res,('status:'+action[room_id]['status']))
     }
     let roomKey = 'room'+room_id
@@ -631,8 +632,7 @@ async function setMissionRecord(req, res, mClient, status) {
       str = action[room_id]['macs']
     }
     if(str === null) {
-      errorObj.push(mytime+' - macs null')
-      showlog('???? Macs from file is null')
+      showError('setMissionStop macs null -> 405 No action yet')
       return resResources.notAllowed(res, 'No action yet')
     }
     //Set status
@@ -640,6 +640,7 @@ async function setMissionRecord(req, res, mClient, status) {
     file.saveJsonToFile(actionPath, action)
     let arr = str.split(',')
     let mac = arr[index] 
+    showLog('macs : '+str )
     showLog('Change action[room_id][status] :'+ action[room_id]['status'])
     
     //Set end time to redis
@@ -648,7 +649,7 @@ async function setMissionRecord(req, res, mClient, status) {
     hsetValue(redisClient, roomKey, 'status', status)
     //Save report and snd socket to web
     save2SendSocket(mClient, mac, status, mytime)
-    //Save record for mission in setMissionRecord
+    //Save record for mission in setMissionStop
     if(isTest === false) {
       let result = await saveRecord(redisClient, room_id, mac)
       if(result.id)
@@ -670,6 +671,7 @@ async function setMissionRecord(req, res, mClient, status) {
 
     return resResources.doSuccess(res, message)
   } catch (error) {
+    showError('setMissionStop '+error.message)
     resResources.catchError(res, error.message)
   }
 }
@@ -684,8 +686,11 @@ async function getData(req, res) {
     redisClient.connect()
     let user_id = req.body.user_id || req.query.user_id
     let room_id = req.body.room_id || req.query.room_id
-    if(user_id === undefined || room_id === undefined)
-        return resResources.missPara(res)
+    if(user_id === undefined || room_id === undefined) {
+      showError('getData 400 missPara')
+      return resResources.missPara(res)
+    }
+        
     let roomKey = 'room'+room_id
     let members = null
     let str = await redisClient.hgetValue(roomKey, 'members')
@@ -703,6 +708,7 @@ async function getData(req, res) {
     user_id = parseInt(user_id)
     //console.log(members.indexOf(user_id))
     if(members.indexOf(user_id) < 0) {
+      showError('getData 405 No join team')
       return resResources.notAllowed(res,'No join team')
     }
     let room = null
@@ -717,6 +723,7 @@ async function getData(req, res) {
     let data = {"room":room, "members":members, "missions":missions }
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
+    showError('getData '+error.message)
     resResources.catchError(res, error.message)
   }
 }
@@ -740,16 +747,26 @@ async function setMissionStart(req, res, mClient) {
     let room_id = req.body.room_id || req.query.room_id
     let sequence = req.body.sequence || req.query.sequence
 
-    if(room_id === undefined || sequence === null) 
-        return resResources.missPara(res)
+    if(room_id === undefined || sequence === null) {
+      showError('setMissionStart 400 -> missPara')
+      return resResources.missPara(res)
+    }
+        
     if(action[room_id] === undefined || action[room_id] === null || action[room_id]['status'] != 1) {
-      showLog('action[room_id] is null')
+      showError('setMissionStart action[room_id] is null -> 405')
       return resResources.notAllowed(res, 'No action')
     }
     let roomKey = 'room'+room_id
     showLog('roomKey :'+roomKey +', sequence:'+sequence)
+
     let count = await redisClient.hgetValue(roomKey, 'count')
-    
+    let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
+    if(currentSequence === null) {
+      showError('setMissionStart redis sequence null')
+      action = file.getJsonFromFile(actionPath)
+      currentSequence = action[room_id]['sequence']
+    }
+
     if(count === null) {
       showLog('From redis count is null')
       action = file.getJsonFromFile(actionPath)
@@ -757,24 +774,27 @@ async function setMissionStart(req, res, mClient) {
     } 
     
     if(count === null) {
-      showLog('From file count is null -> No action yet')
-      errorObj.push(newtime + ' No action yet')
+      showError('setMissionStart count from file null -> 405 No action yet')
       return resResources.notAllowed(res, 'No action yet')
     }
-
+    currentSequence = parseInt(currentSequence)
     sequence = parseInt(sequence)
     count = parseInt(count)
-    showLog('count: '+count)
+    showLog('count : '+count+ ', sequence : '+sequence + ', currentSequence:'+currentSequence)
    
+    if(currentSequence === sequence) {
+      showError('setMissionStart 404 repeat sequence '+sequence)
+      return resResources.notAllowed(res, 'Repeat sequence '+sequence)
+    }
+
+
     if(sequence > count) {
-      showLog('sequence > count -> Not found sequence')
-      errorObj.push(newtime + ' - sequence > count')
-      return resResources.notFound(res, 'Not found sequence')
+      showError('setMissionStart 404 Not found sequence '+ sequence)
+      return resResources.notFound(res, 'Not found sequence'+ sequence)
     }  
      
     if(sequence < 2) {
-      showLog('sequence < 2 -> Sequence is less then 2')
-      errorObj.push(newtime + ' - sequence < 2')
+      showError('setMissionStart 405 Sequence < 2')
       return resResources.notAllowed(res, 'Sequence is less then 2')
     }
   
@@ -786,7 +806,7 @@ async function setMissionStart(req, res, mClient) {
       str = json[room_id]['macs']
     }
     if(str === null) {
-      console.log('macs from redis is null')
+      showError('setMissionStart macs from file null -> 405 No allow')
       return resResources.notAllowed(res)
     }
     let arr = str.split(',')
@@ -822,13 +842,18 @@ async function setMissionStart(req, res, mClient) {
     
     return resResources.doSuccess(res, 'Start mission OK')
   } catch (error) {
-    resResources.catchError(res, error.message)
+    showError(error.message)
+    resResources.catchError('setMissionStart' + res, error.message)
   }
 }
 
 async function getStatus(req, res) {
   try {
     let room_id = req.body.room_id || req.query.room_id
+    if(room_id === undefined) {
+      showError('getStatus 400 missPara')
+      return resResources.missPara(res)
+    }
     let roomKey = 'room'+room_id
     
     let redisClient = new redisHandler(0);
@@ -872,6 +897,7 @@ async function getStatus(req, res) {
     let data = {"countdown":countdown, "status": action[room_id]['status'], "sequence":sequence}
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
+    showError('getStatus '+error.message)
     resResources.catchError(res, error.message)
   }
 }
@@ -968,6 +994,16 @@ function save2SendSocket(client, mac, status, time) {
 
 function showLog(message) {
   if(isTest)
+    console.log(message + ' '+ new Date().toISOString())
+    //file.appendToFile(logPath, message)
+}
+
+function showError(message) {
+  if(isTest)
     //console.log(message + ' '+ new Date().toISOString())
-    console.log(new Date().toISOString()  + ' -> ' + message)
+    file.appendToFile(errorPath, message)
+}
+
+function init() {
+  file.saveToFile(errorPath, 'Debug start')
 }
