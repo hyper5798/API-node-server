@@ -614,12 +614,12 @@ async function setMissionStop(req, res, mClient, status) {
     sequence = await redisClient.hgetValue(roomKey, 'sequence')
     showLog('sequence :'+sequence)
     if(sequence === null) {
-      showlog('???? sequence from redis is null ')
+      showLog('???? sequence from redis is null ')
       action = file.getJsonFromFile(actionPath)
       sequence = action[room_id]['sequence']
     }
     if(sequence === null) {
-      showlog('???? sequence from file is null ')
+      showLog('???? sequence from file is null ')
       sequence = 1;
     }
     
@@ -627,7 +627,7 @@ async function setMissionStop(req, res, mClient, status) {
     let str = await redisClient.hgetValue(roomKey, 'macs')
     
     if(str === null) {
-      showlog('???? Macs from redis is null')
+      showLog('???? Macs from redis is null')
       action = file.getJsonFromFile(actionPath)
       str = action[room_id]['macs']
     }
