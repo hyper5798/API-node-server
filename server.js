@@ -31,9 +31,6 @@ let mObj = {}
 let sObj = {}
 let actionScript = {}
 let action = {}
-let trCount = 0
-let rCount = 0
-let actionCount = 0
 let errorObj = []
 let roomPath = './config/room.json';
 let missionPath = './config/mission.json';
@@ -126,6 +123,7 @@ module.exports = async function createServer () {
 
   app.get("/escape/action", function(req, res) {
     //For first mission
+    showLog('setMissionAction -------------------')
     return setMissionAction(req, res, mqttClient)
   })
 
@@ -147,20 +145,23 @@ module.exports = async function createServer () {
 
   app.get("/escape/start", function(req, res) {
     //For pass next mission
+    showLog('setMissionStart -------------------')
     return setMissionStart(req, res, mqttClient)
   })
 
   app.get("/escape/status", function(req, res) {
+    showLog('getMissionStatus -------------------')
     return getStatus(req, res)
   })
 
   app.get("/escape/data", function(req, res) {
+    showLog('getMissionData -------------------')
     return getData(req, res)
   })
 
 
   app.get("/escape/error", function(req, res) {
-    let data = errorObj
+    let data = file.getFromFile(errorPath)
     resResources.getDtaSuccess(res, data)
   })
 
@@ -248,8 +249,8 @@ module.exports = async function createServer () {
     });//send_switch_command
 
     socket.on('mqtt_sub', function (data) {
-      console.log('mqtt_sub : ');
-      console.log( data);
+      showLog('## Send socket to web -> mac :' + data.mac);
+      //console.log( data);
       socket.broadcast.emit('update_command_status', data);
     });
 
@@ -371,8 +372,6 @@ async function setMissionAction(req, res, mClient) {
   try {
     //let topic = mqttConfig.dlRoomTopic//Escape dl topic
     let nTime = new Date().toISOString()
-    console.log(nTime+' setMissionAction -------------------');
-    actionCount++;
     
     let user_id = req.body.user_id || req.query.user_id
     let room_id = req.body.room_id || req.query.room_id
@@ -407,7 +406,7 @@ async function setMissionAction(req, res, mClient) {
       // memberObj[room_id] = obj
       let teamId = obj.team_id
       let members = obj.members
-      showLog('team_id :'+teamId)
+      showLog('## 1.team_id :'+teamId)
       console.log(members)
     /*} 
     
@@ -436,6 +435,7 @@ async function setMissionAction(req, res, mClient) {
       showError('setMissionAction 404 Not found room')
       return resResources.notFound(res, 'Not found room')
     }
+    showLog('## 2. room :' + room.room_name)
 
     //Get all of missions of room
     if(mObj[room_id] === undefined || typeof(mObj[room_id]) != 'object') {
@@ -449,6 +449,8 @@ async function setMissionAction(req, res, mClient) {
         
       mObj[room_id] = mList
     } 
+    let missions = mObj[room_id]
+    showLog('## 3.missions : '+missions.length)
     
     //Get all of scripts of room
     if( sObj[room_id] === undefined) {
@@ -461,18 +463,12 @@ async function setMissionAction(req, res, mClient) {
       }
     }
     const scripts = sObj[room_id]
-    let missions = mObj[room_id]
+    showLog('## 4.scripts : '+ Object.keys(scripts).length)
+    
     let redisClient = new redisHandler(0)
     redisClient.connect()
     let clean = await redisClient.flush()
-    
-    if(isTest) {
-      console.log('*** Show room, missions and scripts ----------------------------------------------')
-      console.log(room.room_name)
-      console.log('missions.length : '+missions.length)
-      console.log('scripts.length : '+ Object.keys(scripts).length)
-    }
-       
+   
     action[room_id]['status'] = 1
     action[room_id]['sequence'] = 1
     action[room_id]['room_name'] = room.room_name
@@ -489,6 +485,8 @@ async function setMissionAction(req, res, mClient) {
     hsetValue(redisClient, roomKey, 'pass_time', room.pass_time)
     hsetValue(redisClient, roomKey, 'team_id', teamId)
     hsetValue(redisClient, roomKey, 'members', JSON.stringify(members))
+
+    showLog('## 5.save room to redis')
 
     //Save mission with mac to redis
     let mStr = ''
@@ -513,6 +511,7 @@ async function setMissionAction(req, res, mClient) {
       }
       actionScript[mission.id] = getScript(scripts[mission.id])
     }
+    showLog('## 6.save mission and macs to redis')
 
     mStr = mStr.substring(0,mStr.length-1);
     let arr = mStr.split(',')
@@ -527,7 +526,7 @@ async function setMissionAction(req, res, mClient) {
     let lists = []
 
     //Model can't add field so add list and list to push mission with script
-    //Set script to mission
+    //For get missions with script
     for(let i=0;i<list.length;i++) {
       let mission = list[i]
       
@@ -554,14 +553,28 @@ async function setMissionAction(req, res, mClient) {
           sendMQTTMessage(mClient, topic, message, (i+1)*500)
       }
     }
-    //For getData API to get missions with script
+    showLog('## 7.save mission with script')
+    
     file.saveJsonToFile(missionPath, lists)
+    if(room === undefined || room === null) {
+      showError('setMissionAction room null')
+    }
+    if(members === undefined || members === null) {
+      showError('setMissionAction members null')
+    }
+    if(lists === undefined || lists === null) {
+      showError('setMissionAction lists null')
+    }
     
     let data = {"room":room, "members":members, "missions":lists }
+    
+    showLog('## 8. responce 200')
+    
     //console.log('------------------------------------------------------------------------')
     //console.log(list)
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
+    showLog('## 8. response 500 : '+error.message)
     showError('setMissionAction '+error.message)
     resResources.catchError(res, error.message)
   }
@@ -597,7 +610,7 @@ async function setMissionStop(req, res, mClient, status) {
       showError('setMissionStop No action')
       return resResources.notAllowed(res,'action[room_id] === undefined -> 405')
     }
-    showLog('action[room_id][status] :'+ action[room_id]['status'])
+    showLog('## 1.status :'+ action[room_id]['status'])
     if(action[room_id]['status'] !=1) {
       showError('setMissionStop status !=1 -> 405')
       return resResources.notAllowed(res,('status:'+action[room_id]['status']))
@@ -607,12 +620,11 @@ async function setMissionStop(req, res, mClient, status) {
     let roomKey = 'room'+room_id
     showLog('roomKey:'+roomKey)
     
-    
     //Get sequence
     let sequence
     
     sequence = await redisClient.hgetValue(roomKey, 'sequence')
-    showLog('sequence :'+sequence)
+    
     if(sequence === null) {
       showLog('???? sequence from redis is null ')
       action = file.getJsonFromFile(actionPath)
@@ -622,6 +634,7 @@ async function setMissionStop(req, res, mClient, status) {
       showLog('???? sequence from file is null ')
       sequence = 1;
     }
+    showLog('## 2.sequence :'+ sequence)
     
     let index = parseInt(sequence) - 1
     let str = await redisClient.hgetValue(roomKey, 'macs')
@@ -635,30 +648,30 @@ async function setMissionStop(req, res, mClient, status) {
       showError('setMissionStop macs null -> 405 No action yet')
       return resResources.notAllowed(res, 'No action yet')
     }
+    showLog('## 3. get macs : '+str )
+
     //Set status
     action[room_id]['status'] = status
     file.saveJsonToFile(actionPath, action)
+    showLog('## 4.change status :'+ status)
     let arr = str.split(',')
     let mac = arr[index] 
-    showLog('macs : '+str )
-    showLog('Change action[room_id][status] :'+ action[room_id]['status'])
     
     //Set end time to redis
     hsetValue(redisClient, mac, 'end', mytime)
     hsetValue(redisClient, roomKey, 'end', mytime)
     hsetValue(redisClient, roomKey, 'status', status)
+    showLog('## 5.save redis')
     //Save report and snd socket to web
     save2SendSocket(mClient, mac, status, mytime)
     //Save record for mission in setMissionStop
     if(isTest === false) {
       let result = await saveRecord(redisClient, room_id, mac)
-      if(result.id)
-        rCount++;
-      let result2 = await saveTeamRecord(redisClient, room_id, mac, status)
-      if(result2.id)
-        trCount++;
+      showLog('## 6.save record to DB')
 
-      showLog('actionCount'+actionCount+',rCount :'+rCount + ', trCount :'+trCount)
+      let result2 = await saveTeamRecord(redisClient, room_id, mac, status)
+      
+      showLog('## 7.save tearm record to DB')
     }
     redisClient.quit()
     let message = 'Stop the mission'
@@ -669,9 +682,10 @@ async function setMissionStop(req, res, mClient, status) {
     } else {
       message = 'Stop the mission'
     }
-
+    showLog('## 8.response 200')
     return resResources.doSuccess(res, message)
   } catch (error) {
+    showLog('## 8. response 500 : '+error.message)
     showError('setMissionStop '+error.message)
     resResources.catchError(res, error.message)
   }
@@ -681,8 +695,6 @@ async function getData(req, res) {
   try {
     //let topic = mqttConfig.dlRoomTopic//Escape dl topic
     let nTime = new Date().toISOString()
-    console.log(nTime+' getData -------------------');
-    actionCount++;
     
     let user_id = req.body.user_id || req.query.user_id
     let room_id = req.body.room_id || req.query.room_id
@@ -696,6 +708,7 @@ async function getData(req, res) {
     let redisClient = new redisHandler(0)
     redisClient.connect()
     let str = await redisClient.hgetValue(roomKey, 'members')
+    
     redisClient.quit()
     if(str === null) {
       members = action[room_id]['members']
@@ -707,6 +720,7 @@ async function getData(req, res) {
       action = file.getJsonFromFile(actionPath)
       members = action[room_id]['members']
     }
+    showLog('## 1.members from redis :'+ str)
     user_id = parseInt(user_id)
     //console.log(members.indexOf(user_id))
     if(members.indexOf(user_id) < 0) {
@@ -719,12 +733,17 @@ async function getData(req, res) {
     } else {
       room = await dataResources.getRoom(room_id)
     }
+    showLog('## 2.get room ')
     
     let missions = file.getJsonFromFile(missionPath)
+
+    showLog('## 3.get mission ' + missions.length)
       
     let data = {"room":room, "members":members, "missions":missions }
+    showLog('## 4. response 200 ')
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
+    showLog('## 4. response 500 : '+error.message)
     showError('getData '+error.message)
     resResources.catchError(res, error.message)
   }
@@ -743,7 +762,6 @@ function getDiff(start_time, end_tme) {
 async function setMissionStart(req, res, mClient) {
   try {
     let newtime = new Date().toISOString()
-    showLog('setMissionStart -------------------')
     
     let room_id = req.body.room_id || req.query.room_id
     let sequence = req.body.sequence || req.query.sequence
@@ -762,34 +780,34 @@ async function setMissionStart(req, res, mClient) {
     let redisClient = new redisHandler(0);
     redisClient.connect();
     let count = await redisClient.hgetValue(roomKey, 'count')
+    if(count === null) {
+      showLog('From redis count is null')
+      action = file.getJsonFromFile(actionPath)
+      count = action[room_id]['count']
+    } 
+    if(count === null) {
+      showError('setMissionStart count from file null -> 405 No action yet')
+      return resResources.notAllowed(res, 'No action yet')
+    }
+    showLog('## 1.get count :' + count)
+    
     let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
     if(currentSequence === null) {
       showError('setMissionStart redis sequence null')
       action = file.getJsonFromFile(actionPath)
       currentSequence = action[room_id]['sequence']
     }
-
-    if(count === null) {
-      showLog('From redis count is null')
-      action = file.getJsonFromFile(actionPath)
-      count = action[room_id]['count']
-    } 
-    
-    if(count === null) {
-      showError('setMissionStart count from file null -> 405 No action yet')
-      return resResources.notAllowed(res, 'No action yet')
+    if(currentSequence === sequence) {
+      showError('setMissionStart 404 repeat sequence '+sequence)
+      return resResources.notAllowed(res, 'Repeat sequence '+sequence)
     }
+    showLog('## 2.get currentSequence :' + currentSequence)
+    
     currentSequence = parseInt(currentSequence)
     sequence = parseInt(sequence)
     count = parseInt(count)
     showLog('count : '+count+ ', sequence : '+sequence + ', currentSequence:'+currentSequence)
    
-    if(currentSequence === sequence) {
-      showError('setMissionStart 404 repeat sequence '+sequence)
-      return resResources.notAllowed(res, 'Repeat sequence '+sequence)
-    }
-
-
     if(sequence > count) {
       showError('setMissionStart 404 Not found sequence '+ sequence)
       return resResources.notFound(res, 'Not found sequence'+ sequence)
@@ -800,7 +818,6 @@ async function setMissionStart(req, res, mClient) {
       return resResources.notAllowed(res, 'Sequence is less then 2')
     }
   
-    
     let index = sequence - 1 
     let str = await redisClient.hgetValue(roomKey, 'macs')
     if(str === null) {
@@ -811,6 +828,7 @@ async function setMissionStart(req, res, mClient) {
       showError('setMissionStart macs from file null -> 405 No allow')
       return resResources.notAllowed(res)
     }
+    showLog('## 3.get macs :' + str)
     let arr = str.split(',')
     let mac2 = arr[index]
     let mac1 = arr[index-1]
@@ -818,7 +836,7 @@ async function setMissionStart(req, res, mClient) {
     //Jason add for set mission_id to room in redis
     
     save2SendSocket(mClient, mac1, 2, newtime)
-    
+    showLog('## 4.mac1 save')
     let currentMission = await redisClient.hgetValue(mac2, 'mission_id')
     
     hsetValue(redisClient, roomKey, 'mission_id', currentMission)
@@ -826,24 +844,24 @@ async function setMissionStart(req, res, mClient) {
     hsetValue(redisClient, mac1, 'end', newtime)
     hsetValue(redisClient, mac2, 'start', newtime)
     redisClient.quit()
+    
+
     action[room_id]['sequence'] = sequence
     file.saveJsonToFile(actionPath, action)
-    
-    showLog('mission_id: '+currentMission+', mac2 :'+ mac2)
+
     let newtime2 = new Date().toISOString()
     save2SendSocket(mClient, mac2, 1, newtime2)
-    
+    showLog('## 5.mac2 save')
     //Save record for mission in setMissionStart
     if(isTest === false) {
+
       let check = await saveRecord(redisClient, room_id, mac1)
-      if(check && check.id) 
-        rCount++;
-      /*console.log('--------- saveRecord-------- '+ new Date().toISOString())
-      console.log('id:'+check.id+', mission_id: '+ check.mission_id)*/
+      showLog('## 6. save record')
     }
-    
+    showLog('## 7. response 200')
     return resResources.doSuccess(res, 'Start mission OK')
   } catch (error) {
+    showLog('## 7. response 500 : '+error.message)
     showError(error.message)
     resResources.catchError('setMissionStart' + res, error.message)
   }
@@ -862,6 +880,7 @@ async function getStatus(req, res) {
       action = file.getJsonFromFile(actionPath)
     }
     let status = action[room_id]['status']
+    showLog('## 1. get status'+ status)
     let countdown = 0
     let sequence = 0
     if( status === 1) {//During in pass mission
@@ -872,6 +891,7 @@ async function getStatus(req, res) {
       let pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
       sequence = await redisClient.hgetValue(roomKey, 'sequence')
       redisClient.quit()
+      showLog('## 2. get data from redis')
 
       if(start === null ) {
         action = file.getJsonFromFile(actionPath)
@@ -889,17 +909,20 @@ async function getStatus(req, res) {
       sequence = parseInt(sequence)
       let now = new Date().toISOString()
       let diff = getDiff(start, now)
+      showLog('## 3. get diff :'+diff)
       countdown = pass_time - diff
-      countdown = 0
 
       if(countdown <= 0) {
         action[room_id]['status'] = 4
         countdown = 0
       }
+      showLog('## 4. get countdown :'+countdown)
     } 
     let data = {"countdown":countdown, "status": action[room_id]['status'], "sequence":sequence}
+    showLog('## 5. response 200')
     return resResources.getDtaSuccess(res, data)
   } catch (error) {
+    showLog('## 5. response 500 : '+error.message)
     showError('getStatus '+error.message)
     resResources.catchError(res, error.message)
   }
@@ -997,7 +1020,8 @@ function save2SendSocket(client, mac, status, time) {
 
 function showLog(message) {
   if(isTest)
-    console.log(message + ' '+ new Date().toISOString())
+    //console.log(message + ' >>> '+ new Date().toISOString())
+    console.log( new Date().toISOString()+ ' >>> '+ message)
     //file.appendToFile(logPath, message)
 }
 
