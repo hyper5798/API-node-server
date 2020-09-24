@@ -249,7 +249,7 @@ module.exports = async function createServer () {
     });//send_switch_command
 
     socket.on('mqtt_sub', function (data) {
-      showLog('## Send socket to web -> mac :' + data.mac);
+      showLog('## Send socket to web -> mac :' + data.macAddr);
       //console.log( data);
       socket.broadcast.emit('update_command_status', data);
     });
@@ -388,7 +388,13 @@ async function setMissionAction(req, res, mClient) {
       action[room_id] = {}
     }
 
-    if(action[room_id]['status'] === 1){
+    let status =  action[room_id]['status']
+    if(status === 1) {
+      action = file.getJsonFromFile(actionPath)
+      status = action[room_id]['status']
+    }
+    if(status === 1){
+      showLog('??? status = 1 -> 405 Already acted')
       showError('setMissionAction status = 1 -> 405 Already acted')
       return resResources.notAllowed(res, 'Already acted')
     }
@@ -610,20 +616,25 @@ async function setMissionStop(req, res, mClient, status) {
       showError('setMissionStop No action')
       return resResources.notAllowed(res,'action[room_id] === undefined -> 405')
     }
-    showLog('## 1.status :'+ action[room_id]['status'])
-    if(action[room_id]['status'] !=1) {
-      showError('setMissionStop status !=1 -> 405')
-      return resResources.notAllowed(res,('status:'+action[room_id]['status']))
+    
+    let oldStatus =  action[room_id]['status']
+    if(oldStatus != 1) {
+      action = file.getJsonFromFile(actionPath)
+      oldStatus = action[room_id]['status']
     }
-    let redisClient = new redisHandler(0)
-    redisClient.connect()
+    showLog('old status :'+oldStatus+', new status :'+status)
+    if(oldStatus !=1) {
+      showLog('???? status !=1 -> 405')
+      showError('setMissionStop status !=1 -> 405')
+      return resResources.notAllowed(res,('status:'+oldStatus))
+    }
     let roomKey = 'room'+room_id
     showLog('roomKey:'+roomKey)
+    let redisClient = new redisHandler(0)
+    redisClient.connect()
     
     //Get sequence
-    let sequence
-    
-    sequence = await redisClient.hgetValue(roomKey, 'sequence')
+    let sequence = await redisClient.hgetValue(roomKey, 'sequence')
     
     if(sequence === null) {
       showLog('???? sequence from redis is null ')
@@ -650,10 +661,12 @@ async function setMissionStop(req, res, mClient, status) {
     }
     showLog('## 3. get macs : '+str )
 
-    //Set status
+    //Change status
     action[room_id]['status'] = status
+    hsetValue(redisClient, roomKey, 'status', status)
     file.saveJsonToFile(actionPath, action)
     showLog('## 4.change status :'+ status)
+
     let arr = str.split(',')
     let mac = arr[index] 
     
