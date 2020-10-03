@@ -24,7 +24,15 @@ module.exports = {
         allowNull: false,
         type: Sequelize.STRING
       },
-      prompt: {
+      prompt1: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
+      prompt2: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
+      prompt3: {
         allowNull: true,
         type: Sequelize.STRING
       },

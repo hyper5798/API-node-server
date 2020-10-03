@@ -5,7 +5,9 @@ module.exports = (sequelize, DataTypes) => {
     mission_id: DataTypes.INTEGER,
     room_id: DataTypes.INTEGER,
     content: DataTypes.STRING,
-    prompt: DataTypes.STRING,
+    prompt1: DataTypes.STRING,
+    prompt2: DataTypes.STRING,
+    prompt3: DataTypes.STRING,
     pass: DataTypes.TEXT,
     note: DataTypes.STRING,
     image_url: DataTypes.STRING,
@@ -19,4 +21,3 @@ module.exports = (sequelize, DataTypes) => {
   };
   return script;
 };
-

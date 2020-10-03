@@ -1,6 +1,6 @@
+
 const mqttConfig = require('../config/mqtt.json')
 const mqtt = require('mqtt')
-const Sequelize = require('sequelize')
 const Report = require('../db/models').report
 const Promise = require('bluebird')
 const util = require('./util')
@@ -8,6 +8,7 @@ const io = require('socket.io-client');
 const appConfig = require('../config/app.json')
 let wsUrl ='http://localhost:'+appConfig.port
 const socket = io.connect(wsUrl, {reconnect: true});
+const redisHandler  = require('../modules/redisHandler')
 let macList = [];
 
 socket.on('connect',function(){
@@ -23,7 +24,8 @@ socket.on('disconnect',function(){
 });
 
 socket.on('news',function(m){
-  console.log('mqtt handller receve websocket :'+m);
+  console.log('mqtt handller receve websocket :');
+  console.log(m)
 });
 
 
@@ -67,7 +69,9 @@ class MqttHandler {
     // Mqtt error calback
     this.mqttClient.on('error', (err) => {
       console.log(err);
-      this.mqttClient.end();
+      if(err === 'client disconnecting') 
+      this.mqttClient.reconnect();
+      //this.mqttClient.end();
     });
 
     // Connection callback
@@ -168,49 +172,118 @@ async function swithObj (topic, msg) {
 
 //"ulTopic1": "YESIO/UL/+", for escape room
 async function handleUpload1 (mObj) { 
+  console.log(getDatestring() +'mqtt_sub_YESIO/UL/+ -------------------')
   let obj = getAdjustObj(mObj);
-  let result = await saveMessage (obj)
+  let result = null
+  
+  result = await saveMessage (obj)
   if(result.dataValues.id){
-    console.log(getDatestring() +' -> Save message success')
+    console.log(getDatestring() +'## Save message success')
   }
   //Jason add for only keep-alive and node-ack
-  if(true) return;
-  if(obj.type_id != 99) return;
+  
+  if(obj.type_id != 99) return
   let mac = obj.macAddr
-  let key = obj.macAddr
-  let room_id = await util.hgetValue(mac, 'room_id')
+  let status = obj.key1
+  let command = obj.key2
+  showStatusMeg(mac, obj.key1)
+  console.log(getDatestring() +'## key is '+status)
+
+  if(command) {
+    console.log(getDatestring() +'## command is '+command)
+  }
+  
+  //要透過mac取room_id
+  let redisClient = new redisHandler(0)
+  redisClient.connect()
+  let room_id = await redisClient.hgetValue(mac, 'room_id')
   
   if(room_id == null) return;
-
   let roomKey = 'room'+room_id
+
   
-  if(obj.key1 == 1) 
-    key = 'start'
-  if(obj.key1 == 2) 
-    key = 'end'
-  if(obj.key1 == 3) {//Pass
-    key = 'end'
-    util.hsetValue(roomKey, 'pass', 1)
+  
+  //For record the door close status
+  
+  if( status === 10) {
+    //let doorStatus = await redisClient.hgetValue(roomKey, 'door')
+    let doorStatus = await redisClient.hgetValue(mac, 'door')
+    doorStatus = parseInt(doorStatus)
+    if(doorStatus && doorStatus===11)
+      //redisClient.hsetValue(roomKey, 'door', 10)
+      redisClient.hsetValue(mac, 'door', 10)
   }
-  if(obj.key1 == 4) {//fail
-    key = 'end'
-    util.hsetValue(roomKey, 'pass', 0)
-  }
-  if(obj.key1 == 6) {//
-    key = 'end'
-    util.hsetValue(roomKey, 'pass', 0)
-  }
-    
-
-  //let value = getRecvString(obj.recv)
-  let value = obj.recv
-  //For record the device triger time
-  util.hsetValue(mac, key, value)
-
+  redisClient.quit()
+  
   //For websocket to webui
   socket.emit('mqtt_sub',JSON.stringify(obj));
+}
 
-  
+function showStatusMeg(_mac,_key) {
+  //For 
+  let key = 'start'
+  switch (_key) {
+    case 1:
+      key = 'start'
+      break
+    case 2:
+      key = 'end';
+      break
+    case 3:
+      key = 'pass'
+      break
+    case 4:
+      key = 'fail'
+      break
+    case 5:
+      key = 'ack'
+      break
+    case 6:
+      key = 'emergency event'
+      break
+    case 7:
+      key = 'security event'
+      break
+    case 10:
+      key = 'node off'
+      break
+    case 11:
+      key = 'node on'
+      break
+    case 20:
+      key = 'turn off'
+      break
+    case 21:
+      key = 'turn on'
+      break
+    case 22:
+      key = 'soft reset'
+      break
+    case 23:
+      key = 'start node'
+      break
+    case 24:
+      key = 'stop node'
+      break
+    case 25:
+      key = 'overtime stop node'
+      break
+    case 26:
+      key = 'emergency stop node'
+      break
+    case 30:
+      key = 'game mode'
+      break
+    case 31:
+      key = 'demo mode'
+      break
+    case 32:
+      key = 'security mode'
+      break
+    default:
+      console.log(`Sorry, we are out of range`)
+  }
+  console.log(getDatestring() +'## mac:'+_mac+', status :'+key)
 }
 
 //"ulTopic2": "GIOT-GW/UL/+"
@@ -279,7 +352,8 @@ function getJSONObj(obj) {
 
 function getDatestring() {
   let date = new Date()
-  return date.toLocaleDateString() + ' ' +date.toLocaleTimeString()
+  return date.toISOString() + ' >>> '
+  //return date.toLocaleDateString() + ' ' +date.toLocaleTimeString()
 }
 
 function getRecvString(time) {
