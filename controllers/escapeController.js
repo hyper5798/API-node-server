@@ -13,7 +13,8 @@ const io = require('socket.io-client')
 const socket = io.connect(wsUrl, {reconnect: true})
 const redisHandler  = require('../modules/redisHandler')
 const file = require('../modules/fileTools')
-let roomPath = './config/room';
+const code = require('../doc/setting/code.json')
+let roomPath = './doc/room/room';
 
 socket.on('connect',function(){
   socket.emit('mqtt_sub','**** escape controller socket cient is ready');
@@ -77,7 +78,6 @@ module.exports = {
         toLog(5,'@@ response 500 :'+e.message)
         resResources.catchError(res, e.message)
       }
-      next();
     },
 
     async sendMqttCmd(req, res, next) {
@@ -111,11 +111,11 @@ module.exports = {
             return notFound(res, 'sendMqttCmd','Not found default device' )
           }
           //Record door status
-          let status = 10
-          if(command === 21) {
-            status = 11
-          } else if(command === 20){
-            status = 10
+          let status = code.door_off_notify//10
+          if(command === code.node_on_command) {//21
+            status = code.door_on_notify//11
+          } else if(command === code.node_off_command){//20
+            status = code.door_off_notify//10
           }
           //redisClient.hsetValue(roomKey,'door', status)
           redisClient.hsetValue(macAddr,'door', status)
@@ -126,10 +126,11 @@ module.exports = {
         }
 		    toLog(3,'get macAddr : '+ macAddr)
         let cmdObj = getMqttObject( macAddr, command, receiveTime, 1)
+        //Save mac status to report
+        //dataResources.saveReport(cmdObj)
         //Send MQTT command to node
         sendMqttMessage(socket, cmdObj)//To server.js mqtt client send message
-        //Save mac status to report
-        dataResources.saveReport(cmdObj)
+        
         redisClient.quit()
 		    toLog(4,'response 200')
         resResources.doSuccess(res, 'Send mqtt command ok')
@@ -137,7 +138,6 @@ module.exports = {
         toLog(4,'@@ response 500 :'+error.message)
         resResources.catchError(res, e.message)
       }
-      next();
     },
 
     async setMissionAction(req, res, next) {
@@ -216,7 +216,7 @@ module.exports = {
             break
           }
         }
-
+        redisClient.hsetValue(roomKey, 'doorMac', doorMac)
 		    toLog(5,'door macAddr :' + doorMac)
         
         if(doorMac === null) {
@@ -238,15 +238,15 @@ module.exports = {
         } 
         doorStatus = parseInt(doorStatus)
         toLog(7,'door status :' + doorStatus)
-        if(doorStatus != '10') {
+        if(doorStatus != code.door_off_notify) {//10
           return notAllowed(res, 'setMissionAction', 'Door is not closed')
         }
         roomObj.room = room
         roomObj.members = members
-        roomObj.status = 1
+        roomObj.status = code.mission_start//1
         roomObj.sequence = 1
         roomObj.start = actionTime
-
+        roomObj.doorMac = doorMac
         let macList = []
         let inx = 0
         let actionScript = {}
@@ -264,15 +264,17 @@ module.exports = {
           macList.splice(inx, 0 , mission.macAddr)
           inx++
           if(mission.sequence ===1) {
-            let cmdObj = getMqttObject( mission.macAddr, 1, actionTime, 1)
+            let cmdObj = getMqttObject( mission.macAddr, code.mission_start, actionTime, 1)//code.mission_start:1
             toLog(9,'Before save report')
             let test = await dataResources.saveReport(cmdObj)
             toLog(9,'After save report')
             roomObj['start'] = actionTime
             //Send socket to web
             sendSocketCmd(socket, cmdObj)
-            //Command 23: 啟動 node
-            let startNodeObj = getMqttObject( mission.macAddr, 23, actionTime, 1)
+            //code.mission_start_command 23: 啟動 node
+            let startNodeObj = getMqttObject( mission.macAddr, code.mission_start_command, actionTime, 1)
+            //Save mac status to report
+            //dataResources.saveReport(startNodeObj)
             /*** MQTT command 23 ***/
             sendMqttMessage(socket, startNodeObj, 0)
             
@@ -308,7 +310,6 @@ module.exports = {
         toLog(10,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
-      next();
     },
 
     getMissionData(req, res, next) {
@@ -347,7 +348,6 @@ module.exports = {
         toLog(4,'response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
-      next();
     },
 
     async setMissionStart(req, res, next) {
@@ -418,15 +418,16 @@ module.exports = {
         //setMissionStart update sequence, status,start time ------------------------------
         let startTime = new Date().toISOString()
         redisClient.hsetValue(mac2, 'start', startTime)
-        roomObj['status'] = 1
+        roomObj['status'] = code.mission_start //1
         roomObj['sequence'] = sequence
         file.saveJsonToFile(path, roomObj)
-        redisClient.hsetValue(roomKey, 'status', 1)
+        redisClient.hsetValue(roomKey, 'status', code.mission_start)
         redisClient.hsetValue(roomKey, 'sequence', sequence)
         redisClient.quit()
         
         //Set start node to web
-        let cmdObj = getMqttObject( mac2, 1, startTime, 1)
+        //let cmdObj = getMqttObject( mac2, 1, startTime, 1)
+        let cmdObj = getMqttObject( mac2, code.mission_start, startTime, 1)
         //Send socket to web
         sendSocketCmd(socket, cmdObj)
         //Save node status 1 to DB
@@ -434,8 +435,10 @@ module.exports = {
         let result = await dataResources.saveReport(cmdObj)
         toLog(7,'After save report')
         
-        //Command 23: 啟動 node
-        let startNodeObj = getMqttObject( mac2, 23, startTime, 1)
+        let startNodeObj = getMqttObject( mac2, code.mission_start_command, startTime, 1)
+        //Save mac2 command to report
+        //dataResources.saveReport(startNodeObj)
+        //MQTT Command 23: 啟動 node
         sendMqttMessage(socket, startNodeObj, 0)
         
         
@@ -444,12 +447,13 @@ module.exports = {
           toLog('','**** save report success')
         }
         toLog(8,'Response 200')
-        resResources.doSuccess(res, 'Set mission start ok')
+        let _msg = 'Set mission sequence '+sequence+' start ok'
+        //resResources.doSuccess(res, 'Set mission start ok')
+        resResources.doSuccess(res, _msg)
       } catch (error) {
         toLog(8,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
-      next();
     },
 
     async setMissionEnd(req, res, next) {
@@ -522,13 +526,14 @@ module.exports = {
         //setMissionEnd update status,end time ------------------------------
         
         redisClient.hsetValue(mac, 'end', endTime)
-        roomObj['status'] = 2
+        roomObj['status'] = code.mission_end//2
         file.saveJsonToFile(path, roomObj)
-        redisClient.hsetValue(roomKey, 'status', 2)
+        redisClient.hsetValue(roomKey, 'status', code.mission_end)
         redisClient.quit()
         
-        //Set end node to web
-        let cmdObj = getMqttObject( mac, 2, endTime, 1)
+        //Set node end status to web
+        //let cmdObj = getMqttObject( mac, 2, endTime, 1)
+        let cmdObj = getMqttObject( mac, code.mission_end, endTime, 1)
         //Save node status 2 to DB
         toLog(7,'Before save report')
         let result = await dataResources.saveReport(cmdObj)
@@ -537,8 +542,10 @@ module.exports = {
         sendSocketCmd(socket, cmdObj)
         //Command 24: 停止 node
         
-        let endNodeObj = getMqttObject( mac, 24, endTime, 1)
-        /*** MQTT command 24 ***/
+        let endNodeObj = getMqttObject( mac, code.mission_end_command, endTime, 1)
+        //Save mac command to report
+        //dataResources.saveReport(endNodeObj)
+        //Send mqtt command 24 to Node
         sendMqttMessage(socket, endNodeObj, 0)
         
         
@@ -546,12 +553,13 @@ module.exports = {
           toLog('','**** save report success')
         }
         toLog(8,'Response 200')
-        resResources.doSuccess(res, 'Set mission end ok')
+        let _msg = 'Set mission sequence '+sequence+' end ok'
+        //resResources.doSuccess(res, 'Set mission end ok')
+        resResources.doSuccess(res, _msg)
       } catch (error) {
         toLog(8,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
-      next();
     },
 
     async getMissionStatus(req, res, next) {
@@ -633,25 +641,24 @@ module.exports = {
         toLog(5,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
-      next();
     },
 
     setMissionPass(req, res, next) {
       toLog(1,'setMissionPass -------------------')
       setMissionStop(req, res, 3, 'Set mission pass ok')
-      //next();
+      
     },
 
     setMissionFail(req, res, next) {
       toLog(1,'setMissionFail -------------------')
       setMissionStop(req, res, 4, 'Set mission fail ok')
-      //next();
+      
     },
 
     setEmergencyStop(req, res, next) {
       toLog(1,'setEmergencyStop -------------------')
       setMissionStop(req, res, 6, 'Set emergency stop ok')
-      //next();
+      
     },
 }
 
@@ -672,7 +679,7 @@ async function setMissionStop(_req, _res, _status, _message) {
     
     let redisClient = new redisHandler(0)
     redisClient.connect()
-    
+    let doorMac = await redisClient.hgetValue(roomKey, 'doorMac')
     let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
     let count = await redisClient.hgetValue(roomKey, 'count')
     let macs =  await redisClient.hgetValue(roomKey, 'macs')
@@ -685,6 +692,7 @@ async function setMissionStop(_req, _res, _status, _message) {
       count = roomObj['count']
       macs = roomObj['macs']
       currentStatus = roomObj['status']
+      doorMac = roomObj['doorMac']
     }
 
     if(typeof currentSequence === 'string') {
@@ -718,7 +726,8 @@ async function setMissionStop(_req, _res, _status, _message) {
       toLog(6,'After save team record')
     }
     //setMissionEnd update status,end time ------------------------------
-    let endTime = new Date().toISOString()
+
+
     redisClient.hsetValue(mac, 'end', end)
     redisClient.hsetValue(roomKey, 'end', end)
     redisClient.hsetValue(roomKey, 'status', _status)
@@ -727,15 +736,28 @@ async function setMissionStop(_req, _res, _status, _message) {
     file.saveJsonToFile(path, roomObj)
     
     redisClient.quit()
+    //Set door open 21
+    let doorObj = getMqttObject( doorMac, code.node_on_command, end, 1)
+    //Save mac command to report
+    //dataResources.saveReport(doorObj)
+    sendMqttMessage(socket, doorObj, 0)
     
     //Set end node to web
     let cmdObj = getMqttObject( mac, _status, end, 1)
     //Send socket to web
     sendSocketCmd(socket, cmdObj)
     //Command 24: 停止 node
+    let cmd = code.stop_command
+    if(_status === 4 || _status === 3) {//over time
+      cmd = code.stop_command
+    } else if(_status === 6){
+      cmd = code.emergency_stop_command
+    }
+    for(let k=0;k<macs.length;k++) {
+      let endNodeObj = getMqttObject( macs[k], cmd, end, 1)
+      sendMqttMessage(socket, endNodeObj, (k+1)*500)
+    }
     
-    let endNodeObj = getMqttObject( mac, 24, end, 1)
-    sendMqttMessage(socket, endNodeObj, 0)
     //Save node status 2 to DB
     toLog(7,'Before save report')
     let result = await dataResources.saveReport(cmdObj)
@@ -833,7 +855,7 @@ function initRoomRedis(_client,_room, _teamId, _members,_time, _macs) {
   let mkey = 'room'+_room.id
   _client.hsetValue(mkey, 'start', _time)
   _client.hsetValue(mkey, 'end', '')
-  _client.hsetValue(mkey, 'status', 1)
+  _client.hsetValue(mkey, 'status', code.mission_start)//1
   _client.hsetValue(mkey, 'sequence', 1)
   _client.hsetValue(mkey, 'room_name', _room.room_name)
   _client.hsetValue(mkey, 'pass_time', _room.pass_time)
@@ -952,4 +974,15 @@ function getDiff(start_time, end_tme) {
   //Math.floor() 最大整數
   let timestamp = Math.floor((new2-new1)/1000)
   return timestamp
+}
+
+function getCode(_key) {
+  let mykey = 'Not_found'
+  for(let key in code){
+    if(code[key] === _key) {
+      mykey = key
+      break
+    }
+  }
+  return mykey
 }

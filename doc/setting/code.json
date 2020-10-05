@@ -1,0 +1,22 @@
+{
+    "keep_alive": 0,
+    "mission_start": 1,
+    "mission_end": 2,
+    "mission_pass": 3,
+    "mission_fail": 4,
+    "ack": 5,
+    "emergency_stop": 6,
+    "security_event": 7,
+    "door_off_notify": 10,
+    "door_on_notify": 11,
+    "node_off_command": 20,
+    "node_on_command": 21,
+    "reset_command": 22,
+    "mission_start_command": 23,
+    "mission_end_command": 24,
+    "stop_command": 25,
+    "emergency_stop_command": 26,
+    "game_mode_command": 30,
+    "demo_mode_command": 31,
+    "security_mode_command": 32
+}

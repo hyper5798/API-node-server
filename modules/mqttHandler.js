@@ -10,6 +10,7 @@ let wsUrl ='http://localhost:'+appConfig.port
 const socket = io.connect(wsUrl, {reconnect: true});
 const redisHandler  = require('../modules/redisHandler')
 let macList = [];
+const code = require('../doc/setting/code.json')
 
 socket.on('connect',function(){
   socket.emit('mqtt_sub','**** mqtt_sub socket cient is ready');
@@ -186,13 +187,11 @@ async function handleUpload1 (mObj) {
   let mac = obj.macAddr
   let status = obj.key1
   let command = obj.key2
-  showStatusMeg(mac, obj.key1)
-  console.log(getDatestring() +'## key is '+status)
-
   if(command) {
-    console.log(getDatestring() +'## command is '+command)
+    console.log(getDatestring() +'## command '+command+' -> '+getCode(command))
   }
-  
+  console.log(getDatestring() +'## mac : '+mac+', code '+status+' -> '+getCode(status))
+
   //要透過mac取room_id
   let redisClient = new redisHandler(0)
   redisClient.connect()
@@ -209,81 +208,29 @@ async function handleUpload1 (mObj) {
     //let doorStatus = await redisClient.hgetValue(roomKey, 'door')
     let doorStatus = await redisClient.hgetValue(mac, 'door')
     doorStatus = parseInt(doorStatus)
-    if(doorStatus && doorStatus===11)
+    if(doorStatus && doorStatus===code.door_on_notify) {//11
       //redisClient.hsetValue(roomKey, 'door', 10)
-      redisClient.hsetValue(mac, 'door', 10)
+      redisClient.hsetValue(mac, 'door', code.door_off_notify)
+    }
   }
   redisClient.quit()
+  if( status < 20) {
+    //For websocket to webui
+    socket.emit('mqtt_sub',JSON.stringify(obj));
+  }
   
-  //For websocket to webui
-  socket.emit('mqtt_sub',JSON.stringify(obj));
+  
 }
 
-function showStatusMeg(_mac,_key) {
-  //For 
-  let key = 'start'
-  switch (_key) {
-    case 1:
-      key = 'start'
+function getCode(_key) {
+  let mykey = 'Not_found'
+  for(let key in code){
+    if(code[key] === _key) {
+      mykey = key
       break
-    case 2:
-      key = 'end';
-      break
-    case 3:
-      key = 'pass'
-      break
-    case 4:
-      key = 'fail'
-      break
-    case 5:
-      key = 'ack'
-      break
-    case 6:
-      key = 'emergency event'
-      break
-    case 7:
-      key = 'security event'
-      break
-    case 10:
-      key = 'node off'
-      break
-    case 11:
-      key = 'node on'
-      break
-    case 20:
-      key = 'turn off'
-      break
-    case 21:
-      key = 'turn on'
-      break
-    case 22:
-      key = 'soft reset'
-      break
-    case 23:
-      key = 'start node'
-      break
-    case 24:
-      key = 'stop node'
-      break
-    case 25:
-      key = 'overtime stop node'
-      break
-    case 26:
-      key = 'emergency stop node'
-      break
-    case 30:
-      key = 'game mode'
-      break
-    case 31:
-      key = 'demo mode'
-      break
-    case 32:
-      key = 'security mode'
-      break
-    default:
-      console.log(`Sorry, we are out of range`)
+    }
   }
-  console.log(getDatestring() +'## mac:'+_mac+', status :'+key)
+  return mykey
 }
 
 //"ulTopic2": "GIOT-GW/UL/+"

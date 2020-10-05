@@ -24,7 +24,7 @@ const resResources = require('./lib/resResources')
 const Command = require('./db/models').command
 const mqttConfig = require('./config/mqtt.json')
 const file = require('./modules/fileTools')
-let errorPath = './config/error.txt';
+let errorPath = './doc/log/error.txt';
 
 
 //Jason add on 2020.02.16 - start
@@ -355,7 +355,7 @@ function showError(message) {
 }
 
 async function init() {
-  const roomPath = './config/room';
+  const roomPath = './doc/room/room';
   const dataResources = require('./lib/dataResources')
   let rooms = await dataResources.getRooms()
   let tmp = {}
