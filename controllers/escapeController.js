@@ -32,6 +32,11 @@ socket.on('news',function(m){
   console.log('escape controller receve websocket :'+m);
 });
 
+socket.on('update_mqtt_ul',function(data){
+  console.log('escapeController update_mqtt_ul :'+ data.key1);
+  switchMqttCmd(data)
+});
+
 module.exports = {
     async getDefaultMission(req, res, next) {
       try {
@@ -92,8 +97,7 @@ module.exports = {
         let room_id = parseInt(input.room_id)
         let macAddr = input.macAddr
         let command = parseInt(input.command)
-        //let path = roomPath+room_id+'.json'
-        //let roomKey = 'room'+room_id
+
         let redisClient = new redisHandler(0)
         redisClient.connect()
         //Get missions from db
@@ -985,4 +989,89 @@ function getCode(_key) {
     }
   }
   return mykey
+}
+
+async function switchMqttCmd(obj) {
+  
+  let macAddr = obj.macAddr
+  let command = obj.key1
+  if(command) {
+    command = parseInt(command)
+  }
+  toLog(1,'switchMqttCmd -------------------'+command )
+  let redisClient = new redisHandler(0)
+  redisClient.connect()
+  let room_id = await redisClient.hgetValue(macAddr, 'room_id')
+  if(command === code.door_off_notify) {
+    toLog(2, 'door_off_notify')
+    let doorStatus = await redisClient.hgetValue(macAddr, 'door')
+    if(doorStatus) doorStatus = parseInt(doorStatus)
+    if(doorStatus === code.door_on_notify) {
+      //表示大門開啟過,然後上報關閉,表示進入啟 ,若要開啟輔助照明可於此開啟
+      //存到Redis
+      redisClient.hsetValue(macAddr, 'door', code.door_off_notify)
+      //收到 MQTT時就存到DB
+      toLog(3, 'save door status door_off_notify :' + code.door_off_notify)
+    }
+  } else if(command === code.emergency_stop) {
+    try {
+      toLog(2, 'emergency_stop')
+      let status = code.emergency_stop
+      let doorMac = macAddr
+      let room_id = await redisClient.hgetValue(macAddr, 'room_id')
+      let path = roomPath+room_id+'.json'
+      let roomObj = file.getJsonFromFile(path)
+      let roomKey = 'room'+room_id
+      let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
+      let count = await redisClient.hgetValue(roomKey, 'count')
+      let macs =  await redisClient.hgetValue(roomKey, 'macs')
+      let currentStatus = await redisClient.hgetValue(roomKey, 'status')
+      if(currentSequence === null) {//Check redis value
+        toLog('','@@ from redis null')
+        currentSequence = roomObj['sequence']
+        count = roomObj['count']
+        macs = roomObj['macs']
+        currentStatus = roomObj['status']
+      }
+      if(typeof currentSequence === 'string') {
+        currentSequence = parseInt(currentSequence)
+        count = parseInt(count)
+        macs = JSON.parse(macs)
+        currentStatus = parseInt(currentStatus)
+      }
+      toLog(3,'currentSequence :'+ currentSequence + ', currentStatus :'+currentStatus)
+      let mac = macs[(currentSequence-1)]
+      toLog(4,'last mac :'+ mac)
+      let end = new Date().toISOString()
+      toLog(5,'end :'+ end)
+      if(true) {
+        toLog(6,'Before save record')
+        let result1 = await saveRecord(redisClient, room_id, mac, end)
+        toLog(6,'After save record')
+        toLog(7,'Before save team record')
+        let result2 = await saveTeamRecord(redisClient, room_id, status, end)
+        toLog(7,'After save team record')
+      }
+      //setMissionEnd update status,end time ------------------------------
+
+      redisClient.hsetValue(mac, 'end', end)
+      redisClient.hsetValue(roomKey, 'end', end)
+      redisClient.hsetValue(roomKey, 'status', status)
+      roomObj['status'] = status
+      roomObj['end'] = end
+      file.saveJsonToFile(path, roomObj)
+
+      //Set end node to web
+      let cmdObj = getMqttObject( mac, code.emergency_stop, end, 1)
+      //Send MQTT to node
+      sendSocketCmd(socket, cmdObj)
+      for(let k=0;k<macs.length;k++) {
+        let endNodeObj = getMqttObject( macs[k], code.emergency_stop_command, end, 1)
+        sendMqttMessage(socket, endNodeObj, (k+1)*500)
+      }
+    } catch (error) {
+      toLog('','@@ emergency_stop error:'+error.message)
+    }
+  }
+  redisClient.quit()
 }

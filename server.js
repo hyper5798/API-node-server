@@ -231,6 +231,11 @@ module.exports = async function createServer () {
       socket.broadcast.emit('update_command_status', data)
     });
 
+    socket.on('MQTT_YESIO_UL', function (data) {
+      console.log('server receive MQTT_YESIO_UL' + JSON.stringify(data)) 
+      io.sockets.emit('update_mqtt_ul', data)
+    });
+
     socket.on('disconnect', function () {
       console.log('???? socket disconnect id : ' + socket.id);
     });

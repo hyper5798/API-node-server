@@ -176,29 +176,36 @@ async function handleUpload1 (mObj) {
   console.log(getDatestring() +'mqtt_sub_YESIO/UL/+ -------------------')
   let obj = getAdjustObj(mObj);
   let result = null
-  
+  //Jason save MQTT to report -------- start
   result = await saveMessage (obj)
   if(result.dataValues.id){
     console.log(getDatestring() +'## Save message success')
   }
-  //Jason add for only keep-alive and node-ack
+  //Jason save MQTT to report -------- end
   
   if(obj.type_id != 99) return
   let mac = obj.macAddr
   let status = obj.key1
   let command = obj.key2
-  if(command) {
-    console.log(getDatestring() +'## command '+command+' -> '+getCode(command))
-  }
   console.log(getDatestring() +'## mac : '+mac+', code '+status+' -> '+getCode(status))
+  if(command) {
+    console.log(getDatestring() +'## command '+command+' -> '+getCode(command) + ' ack')
+    return 
+  }
+
+  if(status === code.ack) {
+    return 
+  }
+  //socket.emit('test_command',JSON.stringify(obj));
+  socket.emit('MQTT_YESIO_UL',obj);
 
   //要透過mac取room_id
-  let redisClient = new redisHandler(0)
+  /*let redisClient = new redisHandler(0)
   redisClient.connect()
   let room_id = await redisClient.hgetValue(mac, 'room_id')
   
-  if(room_id == null) return;
-  let roomKey = 'room'+room_id
+  //if(room_id == null) return;
+  //let roomKey = 'room'+room_id
 
   
   
@@ -207,7 +214,10 @@ async function handleUpload1 (mObj) {
   if( status === 10) {
     //let doorStatus = await redisClient.hgetValue(roomKey, 'door')
     let doorStatus = await redisClient.hgetValue(mac, 'door')
-    doorStatus = parseInt(doorStatus)
+    if(doorStatus) {
+      doorStatus = parseInt(doorStatus)
+    }
+    
     if(doorStatus && doorStatus===code.door_on_notify) {//11
       //redisClient.hsetValue(roomKey, 'door', 10)
       redisClient.hsetValue(mac, 'door', code.door_off_notify)
@@ -217,7 +227,8 @@ async function handleUpload1 (mObj) {
   if( status < 20) {
     //For websocket to webui
     socket.emit('mqtt_sub',JSON.stringify(obj));
-  }
+  }*/
+  
   
   
 }
