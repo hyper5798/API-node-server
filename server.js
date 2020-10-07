@@ -360,6 +360,7 @@ function showError(message) {
 }
 
 async function init() {
+  const redisHandler  = require('./modules/redisHandler')
   const roomPath = './doc/room/room';
   const dataResources = require('./lib/dataResources')
   let rooms = await dataResources.getRooms()
