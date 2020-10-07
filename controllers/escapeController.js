@@ -79,9 +79,9 @@ module.exports = {
         toLog(5,'response 200')
         
         resResources.getDtaSuccess(res, m)
-      } catch (e) {
-        toLog(5,'@@ response 500 :'+e.message)
-        resResources.catchError(res, e.message)
+      } catch (error) {
+        toLog(5,'@@ response 500 :'+error.message)
+        resResources.catchError(res, error.message)
       }
     },
 
@@ -694,6 +694,54 @@ module.exports = {
       setMissionStop(req, res, 6, 'Set emergency stop ok')
       
     },
+
+    async setReduce(req, res, next) {
+      try {
+        toLog(1,'setReduce -------------------')
+        //let input = checkInput(req, ['room_id', 'user_id'])
+        let input = checkInput(req, ['room_id','prompt','time'])
+        
+        if(input === null) {
+          return missParam(res, 'getDefaultMission', 'miss param')
+        }
+        //let user_id = parseInt(input.user_id)
+        let room_id = input.room_id
+        let roomKey = 'room'+room_id
+        let prompt = input.prompt
+        let time = input.time
+        let path = roomPath+room_id+'.json'
+        let roomObj = file.getJsonFromFile(path)
+        //Connect redis
+        let redisClient = new redisHandler(0)
+        redisClient.connect()
+        let reduce = await redisClient.hgetValue(roomKey, 'reduce')
+        if(reduce) 
+          reduce = parseInt(reduce)
+        else
+          reduce = 0
+        if(typeof time === 'string')
+          time = parseInt(time)
+
+        reduce = reduce + time
+        //Save to redis
+        redisClient.hsetValue(roomKey, 'reduce', reduce)
+        redisClient.hsetValue(roomKey, 'prompt', prompt)
+        //Save to file
+        roomObj.reduce = reduce
+        roomObj.prompt = prompt
+        file.saveJsonToFile(path, roomObj)
+        //Send sock to web
+        let now = new Date().toISOString
+        let cmdObj = getMqttObject( 'reduce', time, now, 1)
+        //Send socket to web
+        sendSocketCmd(socket, cmdObj)
+        
+        resResources.doSuccess(res, 'Set reduce ok')
+      } catch (error) {
+        toLog(5,'@@ response 500 :'+error.message)
+        resResources.catchError(res, error.message)
+      }
+    }
 }
 
 function setDefaultStatus(_client, _key) {
