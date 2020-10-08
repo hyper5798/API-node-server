@@ -620,6 +620,7 @@ module.exports = {
         let pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
         let reduce = await redisClient.hgetValue(roomKey, 'reduce')
         let prompt = await redisClient.hgetValue(roomKey, 'prompt')
+        let mode = await redisClient.hgetValue(roomKey, 'mode')
         
         toLog(2,'get sequence, count , macs from redis')
         console.log('currentSequence:'+currentSequence+ ', count:'+count+', macs'+macs)
@@ -645,6 +646,13 @@ module.exports = {
           status = parseInt(status) 
           pass_time = parseInt(pass_time)
           team_id = parseInt(team_id)
+          prompt = parseInt(prompt)
+          reduce = parseInt(reduce)
+          if(mode === null) {
+            mode = 30
+          } else {
+            mode = parseInt(mode)
+          }
         }
 
         if(status === undefined || status === null){
@@ -684,7 +692,7 @@ module.exports = {
         
         redisClient.quit()
         
-        let data = {"team_id":team_id,"countdown":countdown,"sequence":currentSequence,"status":status, "reduce":reduce, "prompt":prompt}
+        let data = {"mode":mode,"team_id":team_id,"countdown":countdown,"sequence":currentSequence,"status":status, "reduce":reduce, "prompt":prompt}
         toLog(5,'response 200')
         return resResources.getDtaSuccess(res, data)
       } catch (error) {
@@ -718,7 +726,7 @@ module.exports = {
         let input = checkInput(req, ['room_id','prompt','time'])
         
         if(input === null) {
-          return missParam(res, 'getDefaultMission', 'miss param')
+          return missParam(res, 'setReduce', 'miss param')
         }
         //let user_id = parseInt(input.user_id)
         let room_id = input.room_id
@@ -731,6 +739,7 @@ module.exports = {
         let redisClient = new redisHandler(0)
         redisClient.connect()
         let reduce = await redisClient.hgetValue(roomKey, 'reduce')
+        toLog(3,'get reduce from redis')
         if(reduce) 
           reduce = parseInt(reduce)
         else
@@ -740,23 +749,92 @@ module.exports = {
 
         reduce = reduce + time
         //Save to redis
+        toLog(3,'Save to redis')
+        console.log('reduce:'+reduce+', prompt:'+prompt)
         redisClient.hsetValue(roomKey, 'reduce', reduce)
         redisClient.hsetValue(roomKey, 'prompt', prompt)
+        toLog(3,'Save to file')
         //Save to file
         roomObj.reduce = reduce
         roomObj.prompt = prompt
         file.saveJsonToFile(path, roomObj)
         //Send sock to web
+        toLog(4,'Send sock to web')
         let now = new Date().toISOString
         let cmdObj = getMqttObject( 'reduce', time, now, 1)
         //Send socket to web
         sendSocketCmd(socket, cmdObj)
-        
+        toLog(5,'@@ response 200 ')
         resResources.doSuccess(res, 'Set reduce ok')
       } catch (error) {
         toLog(5,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
+    },
+
+    async setMode(req, res, next) {
+      try {
+        toLog(1,'setMode -------------------')
+        //let input = checkInput(req, ['room_id', 'user_id'])
+        let input = checkInput(req, ['room_id'])
+        let mode = req.params.mode
+        if(input === null || mode === null) {
+          return missParam(res, 'setMode', 'miss param')
+        }
+        //Connect redis
+        let redisClient = new redisHandler(0)
+        redisClient.connect()
+        console.log('mode:'+mode)
+        toLog(2,'get data from file')
+        let room_id = input.room_id
+        let roomKey = 'room'+room_id
+        let path = roomPath+room_id+'.json'
+        let roomObj = file.getJsonFromFile(path)
+        //Set to redis
+        toLog(2,'Save mode to redis')
+        
+        redisClient.hsetValue(roomKey,'mode',mode)
+        
+        //Set to file
+        toLog(3,'Save mode to file')
+        if(typeof mode === 'string')
+          mode = parseInt(mode)
+        roomObj['mode'] = 30
+        file.saveJsonToFile(path, roomObj)
+        //Set send objec
+        //Send sock to web
+        toLog(4,'Send sock to web')
+        let now = new Date().toISOString
+        
+        //Mode:30
+        if(mode===code.game_mode_command || mode===code.demo_mode_command) {
+          //Get missions
+          let actionTime = new Date().toISOString
+          toLog(4,'Before get mission')
+          let mList = await dataResources.getMissions(room_id, null)
+          toLog(4,'After get mission :'+mList.length)
+          let inx = 0
+          for(let m=0;m<mList.length;m++) {
+            let mission = mList[m]
+            let mObj = getMqttObject( mission.macAddr, mode, actionTime, 1)
+            /*** MQTT mode command ***/
+            sendMqttMessage(socket, mObj, inx*500)
+            inx++
+          }
+        } else if(mode===code.security_mode_command){
+          //Jason note : ?????????????????????????????????????????????
+          toLog(4,'Before get security device')
+          //let mList = await dataResources.getMissions(room_id, null)
+          toLog(4,'After get security device')
+        }
+        redisClient.quit()
+        toLog(5,'@@ response 200 ')
+        resResources.doSuccess(res, 'Set mode mode '+mode+' ok')
+      } catch (error) {
+        toLog(5,'@@ response 500 :'+error.message)
+        resResources.catchError(res, error.message)
+      }
+
     }
 }
 

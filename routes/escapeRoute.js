@@ -22,4 +22,5 @@ escapeRoute.get('/pass', escapeController.setMissionPass)
 escapeRoute.get('/fail', escapeController.setMissionFail)
 escapeRoute.get('/stop', escapeController.setEmergencyStop)
 escapeRoute.get('/reduce', escapeController.setReduce)
+escapeRoute.get('/setmode/:mode', escapeController.setMode)
 module.exports = escapeRoute
