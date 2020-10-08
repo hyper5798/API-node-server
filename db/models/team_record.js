@@ -5,11 +5,11 @@ module.exports = (sequelize, DataTypes) => {
     room_id: DataTypes.INTEGER,
     cp_id: DataTypes.INTEGER,
     total_time: DataTypes.INTEGER,
-    total_score: DataTypes.INTEGER,
+    reduce: DataTypes.INTEGER,
     status: DataTypes.INTEGER,
-    mission_id: DataTypes.INTEGER,
-    created_at: DataTypes.DATE,
-    updated_at: DataTypes.DATE
+    sequence: DataTypes.INTEGER,
+    start: DataTypes.DATE,
+    end: DataTypes.DATE
   }, {
     timestamps: false
   });

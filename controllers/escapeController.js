@@ -97,13 +97,18 @@ module.exports = {
         let room_id = parseInt(input.room_id)
         let macAddr = input.macAddr
         let command = parseInt(input.command)
-        let roomKey = 'room'+room_id
-        let redisClient = new redisHandler(0)
-        redisClient.connect()
         
-        
+
         if(macAddr === 'default') {
+          let roomKey = 'room'+room_id
+          let path = roomPath+room_id+'.json'
+          let roomObj = file.getJsonFromFile(path)
+          let redisClient = new redisHandler(0)
+          redisClient.connect()
           let user_id = req.body.user_id || req.query.user_id
+          if(user_id === undefined || user_id === null) {
+            return missParam(res, 'sendMqttCmd', 'miss param user_id')
+          }
           toLog(2,'befor get teamMember')
           let teamUser = await dataResources.getTeamUser(user_id)
           toLog(2,'after get teamMember : '+ teamUser.team_id)
@@ -135,6 +140,16 @@ module.exports = {
           redisClient.hsetValue(roomKey,'sequence',0)
           redisClient.hsetValue(roomKey,'prompt',0)
           redisClient.hsetValue(roomKey,'reduce',0)
+          if(roomObj === undefined || roomObj === null)
+            roomObj = {}
+          roomObj['sequence'] = 0
+          roomObj['prompt'] = 0
+          roomObj['reduce'] = 0
+          roomObj['team_id'] = teamUser.team_id
+          roomObj['status'] = status
+          roomObj['doorMac'] = macAddr
+          file.saveJsonToFile(path, roomObj)
+          redisClient.quit()
         } else {
           //判斷是否有此裝置
         }
@@ -145,7 +160,7 @@ module.exports = {
         //Send MQTT command to node
         sendMqttMessage(socket, cmdObj)//To server.js mqtt client send message
         
-        redisClient.quit()
+        
 		    toLog(4,'response 200')
         resResources.doSuccess(res, 'Send mqtt command ok')
       } catch (error) {
@@ -644,7 +659,8 @@ module.exports = {
             let now = new Date().toISOString()
             let diff = getDiff(start, now)
             toLog(3,'get diff :'+diff)
-            countdown = pass_time - diff
+            //Jason add for reduce on 2020.10.08
+            countdown = pass_time - diff - reduce
 
             if(countdown <= 0) {
               status = 4
@@ -1051,18 +1067,21 @@ async function saveTeamRecord(_client, _id, _status, _end) {
   let team_id = await _client.hgetValue(myKey, 'team_id')
   let team = await dataResources.getTeam(team_id)
   let _start = await _client.hgetValue(myKey, 'start')
-  let _diff = getDiff(_start, _end)
+  let _reduce = await _client.hgetValue(myKey, 'reduce')
+  let _time = getDiff(_start, _end) + parseInt(_reduce) 
   
-  let mission_id = await _client.hgetValue(myKey, 'mission_id')
+  let _sequence = await _client.hgetValue(myKey, 'sequence')
   
   let saveObj = {
     "team_id": team_id,
     "room_id": _id,
     "cp_id": team.cp_id,
-    "total_time": _diff,
-    "total_score": 0,
+    "total_time": _time,
+    "reduce": _reduce,
     "status" : _status,
-    "mission_id": mission_id
+    "sequence": _sequence,
+    "start": _start,
+    "end": _end
   }
   return dataResources.createTeamRecord(saveObj)
 }
@@ -1071,9 +1090,9 @@ function getDiff(start_time, end_tme) {
   let new1 = Date.parse(start_time)
   let new2 = Date.parse(end_tme)
   //最小整數
-  //let timestamp = Math.ceil((new2-new1)/1000)
+  let timestamp = Math.ceil((new2-new1)/1000)
   //Math.floor() 最大整數
-  let timestamp = Math.floor((new2-new1)/1000)
+  //let timestamp = Math.floor((new2-new1)/1000)
   return timestamp
 }
 

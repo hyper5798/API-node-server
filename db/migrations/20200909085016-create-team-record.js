@@ -24,7 +24,7 @@ module.exports = {
         allowNull: false,
         type: Sequelize.INTEGER
       },
-      total_score: {
+      reduce: {
         allowNull: true,
         type: Sequelize.INTEGER
       },
@@ -32,16 +32,16 @@ module.exports = {
         allowNull: true,
         type: Sequelize.INTEGER
       },
-      mission_id: {
+      sequence: {
         allowNull: true,
         type: Sequelize.INTEGER
       },
-      created_at: {
+      start: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         allowNull: false
       },
-      updated_at: {
+      end: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
         allowNull: false
