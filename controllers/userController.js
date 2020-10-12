@@ -36,6 +36,7 @@ module.exports = {
   async login(req, res, next) {
     try {
       //Get input data
+      const dataResources = require('../lib/dataResources')
       let email = req.body.email || req.query.email
       let password = req.body.password || req.query.password
       //Check input data
@@ -49,8 +50,15 @@ module.exports = {
       {
         return resResources.notFound(res, 'Email not found')
       }
+     
+     
       //Check auth
       let dbUser = dbUsers[0];
+      let teamUser = await dataResources.getTeamUser(dbUser.id)
+      if(teamUser)
+        dbUser.team_id = teamUser.team_id
+      else
+        dbUser.team_id = 0
       let isPass = await authResources.getCompare(password, dbUser.password)
       if(!isPass)
       {
