@@ -547,11 +547,12 @@ module.exports = {
           return notAllowed(res, 'setMissionEnd', 'Repeat command')
         }
         let endTime = new Date().toISOString()
-        if(true) {
+        /*if(true) {
           toLog(6,'Before save record')
           let result = await saveRecord(redisClient, room_id, mac, endTime)
           toLog(6,'After save record')
-        }
+          redisClient.hsetValue(mac, 'record_id', result.id)
+        }*/
         //setMissionEnd update status,end time ------------------------------
         
         redisClient.hsetValue(mac, 'end', endTime)
@@ -635,6 +636,10 @@ module.exports = {
           start  = roomObj['start']
           reduce = roomObj['reduce']
           prompt = roomObj['prompt']
+          mode = roomObj['mode']
+          if(mode === undefined || mode === null) {
+            mode = 30
+          }
           if(roomObj['room'])
             pass_time  = roomObj['room']['pass_time']
         }
@@ -648,7 +653,7 @@ module.exports = {
           team_id = parseInt(team_id)
           prompt = parseInt(prompt)
           reduce = parseInt(reduce)
-          if(mode === null) {
+          if(mode === undefined || mode === null) {
             mode = 30
           } else {
             mode = parseInt(mode)
@@ -838,11 +843,11 @@ module.exports = {
     }
 }
 
-function setDefaultStatus(_client, _key) {
+function setDefaultStatus(_client, _key, _mac) {
   _client.hsetValue(_key, 'sequence', 0)
+  _client.hsetValue(_key, 'doorMac', _mac)
   _client.hsetValue(_key, 'status', 0)
   _client.hsetValue(_key, 'team_id', 0)
-  _client.hsetValue(_key, 'countdown', 0)
   _client.hsetValue(_key, 'reduce', 0)
   _client.hsetValue(_key, 'prompt', 0)
 }
@@ -903,12 +908,22 @@ async function setMissionStop(_req, _res, _status, _message) {
     toLog(4,'end :'+ end)
     
     if(true) {
-      toLog(5,'Before save record')
-      let result1 = await saveRecord(redisClient, room_id, mac, end)
-      toLog(5,'After save record')
-      toLog(6,'Before save team record')
+      toLog(5,'Before save team record')
       let result2 = await saveTeamRecord(redisClient, room_id, _status, end)
-      toLog(6,'After save team record')
+      toLog(5,'After save team record')
+      let team_record_id = result2.id
+      toLog(6,'Before save record')
+      
+      for(let n=0;n<macs.length;n++) {
+        if((n+1)<currentSequence) {
+          let result = await saveRecord(redisClient, room_id, macs[n], team_record_id,null)
+          console.log('saveRecord id:'+result.id)
+        }
+        //console.log(macs[n])
+      }
+      let result1 = await saveRecord(redisClient, room_id, mac,team_record_id, end)
+      console.log('saveRecord id:'+result1.id)
+      toLog(6,'After save record')
     }
     //setMissionEnd update status,end time ------------------------------
 
@@ -1065,7 +1080,6 @@ function initMacRedis(_client,_mac, _roomId,_mission_id, _sequence,_time) {
   _client.hsetValue(_mac, 'mission_id', _mission_id)
   _client.hsetValue(_mac, 'sequence', _sequence)
   if(_sequence === 1) {
-    _client.hsetValue('room'+_roomId, 'mission_id', _mission_id)
     _client.hsetValue(_mac, 'start', _time)
   }
   _client.hsetValue(_mac, 'end', '')
@@ -1123,16 +1137,21 @@ function getDbObj(_Obj) {
   }
 }
 
-async function saveRecord(_client, _roomId, _mac, _end) {
+async function saveRecord(_client, _roomId, _mac, _team_record_id,_end) {
   let _key = 'room'+ _roomId
   let team_id = await _client.hgetValue(_key, 'team_id')
   let mission_id = await _client.hgetValue(_mac, 'mission_id')
   let _start = await _client.hgetValue(_mac, 'start')
+  if(_end === undefined ||_end === null) {
+    _end = await _client.hgetValue(_mac, 'end')
+  }
   let _diff = getDiff(_start,_end)
+  
   let saveObj = {
     "team_id": team_id,
     "room_id": _roomId,
     "mission_id": mission_id,
+    "team_record_id": _team_record_id,
     "start": _start,
     "end": _end,
     "time": _diff
@@ -1193,12 +1212,18 @@ async function switchMqttCmd(obj) {
     command = parseInt(command)
   }
   toLog(1,'switchMqttCmd -------------------'+command )
+  let mission = await dataResources.getMissionByMac(macAddr)
+  if(mission === null) 
+    return
   let redisClient = new redisHandler(0)
   redisClient.connect()
-  let room_id = await redisClient.hgetValue(macAddr, 'room_id')
-  let roomKey = 'room'+room_id
+  
   if(command === code.door_off_notify) {
     toLog(2, 'door_off_notify')
+    let room_id = mission.room_id
+    let roomKey = 'room'+room_id
+    let path = roomPath+room_id+'.json'
+    let roomObj = file.getJsonFromFile(path)
     let doorStatus = await redisClient.hgetValue(macAddr, 'door')
     if(doorStatus) doorStatus = parseInt(doorStatus)
     if(doorStatus === code.door_on_notify) {
@@ -1206,79 +1231,139 @@ async function switchMqttCmd(obj) {
       //存到Redis
       redisClient.hsetValue(macAddr, 'door', code.door_off_notify)
       redisClient.hsetValue(roomKey, 'status', code.door_off_notify)
+      roomObj['status'] = code.door_off_notify
+      file.saveJsonToFile(path, roomObj)
       //收到 MQTT時就存到DB
       toLog(3, 'save door status door_off_notify :' + code.door_off_notify)
     } else {
-      setDefaultStatus(redisClient, roomKey)
+      setDefaultStatus(redisClient, roomKey, macAddr)
     }
+    redisClient.quit()
+  } else if(command === code.mission_end_command) {//24 mission end
+    toLog(2, 'mission_end_command')
+    let room_id = mission.room_id
+    let roomKey = 'room'+room_id
+    let sequence = mission.sequence
+    let count = await redisClient.hgetValue(roomKey, 'count')
+    let status = code.mission_end//2
+    count = parseInt(count)
+    
+    let path = roomPath+room_id+'.json'
+    let roomObj = file.getJsonFromFile(path)
+    let end = new Date().toISOString()
+    toLog(3,'mac :'+ macAddr + ', end:'+end)
+
+    let setresult = await redisClient.hsetValue(macAddr, 'end', end)
+    let setresult2 = await redisClient.hsetValue(roomKey, 'status', status)
+    roomObj['end'] = end
+    roomObj['status'] = status
+    file.saveJsonToFile(path, roomObj)
+    
+    
+    //Set node end status to web
+    //let cmdObj = getMqttObject( mac, 2, endTime, 1)
+    
+    //Save node status 2 to DB
+    let cmdObj = getMqttObject( macAddr, code.mission_end, end, 1)
+    toLog(4,'Before save report')
+    let result = await dataResources.saveReport(cmdObj)
+    toLog(4,'After save report')
+    //Send socket to web (status = 2)
+    sendSocketCmd(socket, cmdObj)
+    
+    if(count === sequence) {
+      let status2 = code.mission_pass
+      stopMssion(redisClient, mission, status2, end)
+    } else {
+      redisClient.quit()
+    }
+    
   } else if(command === code.emergency_stop) {
     try {
       toLog(2, 'emergency_stop')
       let status = code.emergency_stop
-      let doorMac = macAddr
-      let room_id = await redisClient.hgetValue(macAddr, 'room_id')
-      if(room_id === null) room_id = 1
-      let path = roomPath+room_id+'.json'
-      let roomObj = file.getJsonFromFile(path)
-      let roomKey = 'room'+room_id
-      let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
-      let count = await redisClient.hgetValue(roomKey, 'count')
-      let macs =  await redisClient.hgetValue(roomKey, 'macs')
-      let currentStatus = await redisClient.hgetValue(roomKey, 'status')
-      if(currentStatus === null) {//Check redis value
-        toLog('','@@ from redis null')
-        currentSequence = roomObj['sequence']
-        count = roomObj['count']
-        macs = roomObj['macs']
-        currentStatus = roomObj['status']
-      }
-      if(typeof currentStatus === 'string') {
-        currentSequence = parseInt(currentSequence)
-        currentStatus = parseInt(currentStatus)
-        if(count)
-          count = parseInt(count)
-        if(macs)
-          macs = JSON.parse(macs)
-      }
-      toLog(3,'currentSequence :'+ currentSequence + ', currentStatus :'+currentStatus)
-      if(currentSequence === 0) {
-        redisClient.hsetValue(roomKey, 'status', status)
-        redisClient.quit()
-        return 
-      }
-      
-      let mac = macs[(currentSequence-1)]
-      toLog(4,'last mac :'+ mac)
+      //let doorMac = macAddr
       let end = new Date().toISOString()
-      toLog(5,'end :'+ end)
-      if(true) {
-        toLog(6,'Before save record')
-        let result1 = await saveRecord(redisClient, room_id, mac, end)
-        toLog(6,'After save record')
-        toLog(7,'Before save team record')
-        let result2 = await saveTeamRecord(redisClient, room_id, status, end)
-        toLog(7,'After save team record')
-      }
-      //setMissionEnd update status,end time ------------------------------
-
-      redisClient.hsetValue(mac, 'end', end)
-      redisClient.hsetValue(roomKey, 'end', end)
-      redisClient.hsetValue(roomKey, 'status', status)
-      roomObj['status'] = status
-      roomObj['end'] = end
-      file.saveJsonToFile(path, roomObj)
-
-      //Set end node to web
-      let cmdObj = getMqttObject( mac, code.emergency_stop, end, 1)
-      //Send MQTT to node
-      sendSocketCmd(socket, cmdObj)
-      for(let k=0;k<macs.length;k++) {
-        let endNodeObj = getMqttObject( macs[k], code.emergency_stop_command, end, 1)
-        sendMqttMessage(socket, endNodeObj, (k+1)*500)
-      }
+      stopMssion(redisClient, mission, status, end)
+      
     } catch (error) {
       toLog('','@@ emergency_stop error:'+error.message)
     }
   }
-  redisClient.quit()
+  
 }
+
+async function stopMssion(_client, _mission, _status, _end) {
+
+  let room_id = _mission.room_id
+  let roomKey = 'room'+room_id
+  let path = roomPath+room_id+'.json'
+  let roomObj = file.getJsonFromFile(path)
+  let currentSequence = await _client.hgetValue(roomKey, 'sequence')
+  let count = await _client.hgetValue(roomKey, 'count')
+  let macs =  await _client.hgetValue(roomKey, 'macs')
+  let currentStatus = await _client.hgetValue(roomKey, 'status')
+  if(currentStatus === null) {//Check redis value
+    toLog('','@@ from redis null')
+    currentSequence = roomObj['sequence']
+    count = roomObj['count']
+    macs = roomObj['macs']
+    currentStatus = roomObj['status']
+  }
+  if(typeof currentStatus === 'string') {
+    currentSequence = parseInt(currentSequence)
+    currentStatus = parseInt(currentStatus)
+    if(count)
+      count = parseInt(count)
+    if(macs)
+      macs = JSON.parse(macs)
+  }
+  toLog(3,'currentSequence :'+ currentSequence + ', currentStatus :'+currentStatus)
+  if(currentSequence === 0) {
+    redisClient.hsetValue(roomKey, 'status', _status)
+    redisClient.quit()
+    return 
+  }
+  let mac = macs[(currentSequence-1)]
+  toLog(4,'last mac :'+ mac)
+  if(true) {
+    toLog(5,'Before save team record')
+    let result2 = await saveTeamRecord(_client, room_id, _status, _end)
+    toLog(5,'After save team record')
+    let team_record_id = result2.id
+    toLog(6,'Before save record')
+    
+    for(let n=0;n<macs.length;n++) {
+      if((n+1)<currentSequence) {
+        let result = await saveRecord(_client, room_id, macs[n], team_record_id,null)
+        console.log('saveRecord id:'+result.id)
+      }
+      //console.log(macs[n])
+    }
+    let result1 = await saveRecord(_client, room_id, mac,team_record_id, _end)
+    console.log('saveRecord id:'+result1.id)
+    toLog(6,'After save record')
+  }
+  //setMissionEnd update status,end time ------------------------------
+
+  _client.hsetValue(mac, 'end', _end)
+  _client.hsetValue(roomKey, 'end', _end)
+  _client.hsetValue(roomKey, 'status', _status)
+  roomObj['status'] = _status
+  roomObj['end'] = _end
+  file.saveJsonToFile(path, roomObj)
+
+  //Set end node to web
+  let cmdObj = getMqttObject( mac, _status, _end, 1)
+  //Send MQTT to node
+  sendSocketCmd(socket, cmdObj)
+  if(_status === code.emergency_stop) {
+    for(let k=0;k<macs.length;k++) {
+      let endNodeObj = getMqttObject( macs[k], code.emergency_stop_command, _end, 1)
+      sendMqttMessage(socket, endNodeObj, (k+1)*500)
+    }
+  } 
+  
+  _client.quit()
+}
+
