@@ -4,6 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     team_id: DataTypes.INTEGER,
     room_id: DataTypes.INTEGER,
     mission_id: DataTypes.INTEGER,
+    team_record_id: DataTypes.INTEGER,
     start_at: DataTypes.DATE,
     end_at: DataTypes.DATE,
     time: DataTypes.INTEGER,

@@ -20,6 +20,10 @@ module.exports = {
         allowNull: false,
         type: Sequelize.INTEGER
       },
+      team_record_id: {
+        allowNull: true,
+        type: Sequelize.INTEGER
+      },
       start_at: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
