@@ -789,6 +789,7 @@ module.exports = {
         //Connect redis
         let redisClient = new redisHandler(0)
         redisClient.connect()
+        
         console.log('mode:'+mode)
         toLog(2,'get data from file')
         let room_id = input.room_id
@@ -797,7 +798,12 @@ module.exports = {
         let roomObj = file.getJsonFromFile(path)
         //Set to redis
         toLog(2,'Save mode to redis')
-        
+        let oldMode = await redisClient.hgetValue(roomKey,'mode')
+        if(oldMode === null) {
+          oldMode = code.game_mode_command
+        } else {
+          oldMode = parseInt(oldMode)
+        }
         redisClient.hsetValue(roomKey,'mode',mode)
         
         //Set to file
@@ -815,22 +821,52 @@ module.exports = {
         if(mode===code.game_mode_command || mode===code.demo_mode_command) {
           //Get missions
           let actionTime = new Date().toISOString
-          toLog(4,'Before get mission')
+          toLog(5,'Before get mission')
           let mList = await dataResources.getMissions(room_id, null)
-          toLog(4,'After get mission :'+mList.length)
-          let inx = 0
+          toLog(5,'After get mission :'+mList.length)
+          
           for(let m=0;m<mList.length;m++) {
+            
             let mission = mList[m]
+            if(mission.sequence === 0) //Bypass default node
+              continue
             let mObj = getMqttObject( mission.macAddr, mode, actionTime, 1)
-            /*** MQTT mode command ***/
-            sendMqttMessage(socket, mObj, inx*500)
-            inx++
+            // MQTT mode command 
+            sendMqttMessage(socket, mObj, m*500)
           }
+          /*if(oldMode === code.security_mode_command) {
+            //Send MQTT node_off_command to seurity node
+            toLog(6,'Before get security device')
+            //let sList = await dataResources.getSeurityNode(room_id)
+            let sList = await dataResources.getMissions(room_id, null)
+            toLog(6,'After get security device :'+sList.length)
+
+            for(let n=0;n<sList.length;n++) {
+            
+              let device = sList[n]
+              let nObj = getMqttObject( device.macAddr, code.node_off_command, actionTime, 1)
+              // MQTT secrity node off command 
+              sendMqttMessage(socket, nObj, n*500)
+            }
+          }*/
+          
         } else if(mode===code.security_mode_command){
           //Jason note : ?????????????????????????????????????????????
-          toLog(4,'Before get security device')
-          //let mList = await dataResources.getMissions(room_id, null)
-          toLog(4,'After get security device')
+          //Send MQTT node_off_command to seurity node
+          let actionTime = new Date().toISOString
+          /*toLog(5,'Before get security device')
+          //let sList = await dataResources.getSeurityNode(room_id)
+          let sList = await dataResources.getMissions(room_id, null)
+          toLog(5,'After get security device :'+sList.length)
+
+          for(let n=0;n<sList.length;n++) {
+          
+            let device = sList[n]
+            let nObj = getMqttObject( device.macAddr, code.node_on_command, actionTime, 1)
+            // MQTT secrity node off command 
+            sendMqttMessage(socket, nObj, n*500)
+          }*/
+        
         }
         redisClient.quit()
         toLog(5,'@@ response 200 ')
