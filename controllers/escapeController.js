@@ -37,6 +37,11 @@ socket.on('update_mqtt_ul',function(data){
   switchMqttCmd(data)
 });
 
+socket.on('change_mode',function(data){
+  console.log('escapeController change_mode :'+ data.mode);
+  switchMode(data.room_id, data.mode)
+});
+
 module.exports = {
     async getDefaultMission(req, res, next) {
       try {
@@ -210,7 +215,7 @@ module.exports = {
             toLog('','@@ Already acted')
             notAllowed(res, 'setMissionAction', 'Already acted')
           } else if(status === code.emergency_stop) {
-            //進入大門尚未闖安按下緊急按紐------------------------------
+            //進入大門尚未闖關按下緊急按紐------------------------------
             setDefaultStatus(redisClient, roomKey)
             toLog('','@@ Emergency door open')
             conflict(res, 'setMissionAction', 'Emergency door open')
@@ -675,14 +680,10 @@ module.exports = {
             //Jason add for reduce on 2020.10.08
             countdown = pass_time - diff - reduce
 
-            if(countdown <= 0) {
-              status = 4
+            if(countdown < 0) {
               countdown = 0
-              roomObj['status'] = status
-              file.saveJsonToFile(path, roomObj)
-              redisClient.hsetValue(roomKey, 'status', status)
-            
             } else if (currentSequence === count && status === 2 && countdown > 0) {
+              // To verify last sequence then do pass flow after mqtt end 
               status = 3
               countdown = 0
               roomObj['status'] = status
@@ -786,97 +787,103 @@ module.exports = {
         if(input === null || mode === null) {
           return missParam(res, 'setMode', 'miss param')
         }
-        //Connect redis
-        let redisClient = new redisHandler(0)
-        redisClient.connect()
-        
-        console.log('mode:'+mode)
-        toLog(2,'get data from file')
         let room_id = input.room_id
-        let roomKey = 'room'+room_id
-        let path = roomPath+room_id+'.json'
-        let roomObj = file.getJsonFromFile(path)
-        //Set to redis
-        toLog(2,'Save mode to redis')
-        let oldMode = await redisClient.hgetValue(roomKey,'mode')
-        if(oldMode === null) {
-          oldMode = code.game_mode_command
-        } else {
-          oldMode = parseInt(oldMode)
-        }
-        redisClient.hsetValue(roomKey,'mode',mode)
-        
-        //Set to file
-        toLog(3,'Save mode to file')
-        if(typeof mode === 'string')
-          mode = parseInt(mode)
-        roomObj['mode'] = 30
-        file.saveJsonToFile(path, roomObj)
-        //Set send objec
-        //Send sock to web
-        toLog(4,'Send sock to web')
-        let now = new Date().toISOString
-        
-        //Mode:30
-        if(mode===code.game_mode_command || mode===code.demo_mode_command) {
-          //Get missions
-          let actionTime = new Date().toISOString
-          toLog(5,'Before get mission')
-          let mList = await dataResources.getMissions(room_id, null)
-          toLog(5,'After get mission :'+mList.length)
-          
-          for(let m=0;m<mList.length;m++) {
-            
-            let mission = mList[m]
-            if(mission.sequence === 0) //Bypass default node
-              continue
-            let mObj = getMqttObject( mission.macAddr, mode, actionTime, 1)
-            // MQTT mode command 
-            sendMqttMessage(socket, mObj, m*500)
-          }
-          /*if(oldMode === code.security_mode_command) {
-            //Send MQTT node_off_command to seurity node
-            toLog(6,'Before get security device')
-            //let sList = await dataResources.getSeurityNode(room_id)
-            let sList = await dataResources.getMissions(room_id, null)
-            toLog(6,'After get security device :'+sList.length)
-
-            for(let n=0;n<sList.length;n++) {
-            
-              let device = sList[n]
-              let nObj = getMqttObject( device.macAddr, code.node_off_command, actionTime, 1)
-              // MQTT secrity node off command 
-              sendMqttMessage(socket, nObj, n*500)
-            }
-          }*/
-          
-        } else if(mode===code.security_mode_command){
-          //Jason note : ?????????????????????????????????????????????
-          //Send MQTT node_off_command to seurity node
-          let actionTime = new Date().toISOString
-          /*toLog(5,'Before get security device')
-          //let sList = await dataResources.getSeurityNode(room_id)
-          let sList = await dataResources.getMissions(room_id, null)
-          toLog(5,'After get security device :'+sList.length)
-
-          for(let n=0;n<sList.length;n++) {
-          
-            let device = sList[n]
-            let nObj = getMqttObject( device.macAddr, code.node_on_command, actionTime, 1)
-            // MQTT secrity node off command 
-            sendMqttMessage(socket, nObj, n*500)
-          }*/
-        
-        }
-        redisClient.quit()
-        toLog(5,'@@ response 200 ')
+        switchMode(room_id, mode)
+        toLog('','@@ response 200 ')
         resResources.doSuccess(res, 'Set mode mode '+mode+' ok')
       } catch (error) {
-        toLog(5,'@@ response 500 :'+error.message)
+        toLog('','@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
 
     }
+}
+
+async function switchMode(_room_id, _mode) {
+  //Connect redis
+  let redisClient = new redisHandler(0)
+  redisClient.connect()
+  
+  console.log('room_id'+_room_id+', mode:'+_mode)
+  toLog(2,'get data from file')
+  
+  let roomKey = 'room'+_room_id
+  let path = roomPath+_room_id+'.json'
+  let roomObj = file.getJsonFromFile(path)
+  //Set to redis
+  toLog(2,'Save mode to redis')
+  let oldMode = await redisClient.hgetValue(roomKey,'mode')
+  if(oldMode === null) {
+    oldMode = code.game_mode_command
+  } else {
+    oldMode = parseInt(oldMode)
+  }
+  redisClient.hsetValue(roomKey,'mode',_mode)
+  
+  //Set to file
+  toLog(3,'Save mode to file')
+  if(typeof _mode === 'string')
+    _mode = parseInt(_mode)
+  roomObj['mode'] = _mode
+  file.saveJsonToFile(path, roomObj)
+  //Set send objec
+  //Send sock to web
+  toLog(4,'Send sock to web')
+  let now = new Date().toISOString
+  
+  //Mode:30
+  if(_mode===code.game_mode_command || _mode===code.demo_mode_command) {
+    //Get missions
+    let actionTime = new Date().toISOString
+    toLog(5,'Before get mission')
+    let mList = await dataResources.getMissions(_room_id, null)
+    toLog(5,'After get mission :'+mList.length)
+    
+    for(let m=0;m<mList.length;m++) {
+      
+      let mission = mList[m]
+      if(mission.sequence === 0) //Bypass default node
+        continue
+      let mObj = getMqttObject( mission.macAddr, _mode, actionTime, 1)
+      // MQTT mode command 
+      sendMqttMessage(socket, mObj, m*500)
+    }
+    /*if(oldMode === code.security_mode_command) {
+      //Send MQTT node_off_command to seurity node
+      toLog(6,'Before get security device')
+      //let sList = await dataResources.getSeurityNode(_room_id)
+      let sList = await dataResources.getMissions(_room_id, null)
+      toLog(6,'After get security device :'+sList.length)
+
+      for(let n=0;n<sList.length;n++) {
+      
+        let device = sList[n]
+        let nObj = getMqttObject( device.macAddr, code.node_off_command, actionTime, 1)
+        // MQTT secrity node off command 
+        sendMqttMessage(socket, nObj, n*500)
+      }
+    }*/
+    
+  } else if(_mode===code.security_mode_command){
+    //Jason note : ?????????????????????????????????????????????
+    //Send MQTT node_off_command to seurity node
+    let actionTime = new Date().toISOString
+    /*toLog(5,'Before get security device')
+    //let sList = await dataResources.getSeurityNode(_room_id)
+    let sList = await dataResources.getMissions(_room_id, null)
+    toLog(5,'After get security device :'+sList.length)
+
+    for(let n=0;n<sList.length;n++) {
+    
+      let device = sList[n]
+      let nObj = getMqttObject( device.macAddr, code.node_on_command, actionTime, 1)
+      // MQTT secrity node off command 
+      sendMqttMessage(socket, nObj, n*500)
+    }*/
+  
+  }
+  redisClient.quit()
+  
 }
 
 function setDefaultStatus(_client, _key, _mac) {
@@ -1318,7 +1325,6 @@ async function switchMqttCmd(obj) {
     try {
       toLog(2, 'emergency_stop')
       let status = code.emergency_stop
-      //let doorMac = macAddr
       let end = new Date().toISOString()
       stopMssion(redisClient, mission, status, end)
       
@@ -1326,11 +1332,16 @@ async function switchMqttCmd(obj) {
       toLog('','@@ emergency_stop error:'+error.message)
     }
   }
-  
 }
 
+/**
+ * param 
+ * _client: redis client
+ * _mission: last sequence mission
+ * _status: 3,4,6
+ * _end: end time
+ */
 async function stopMssion(_client, _mission, _status, _end) {
-
   let room_id = _mission.room_id
   let roomKey = 'room'+room_id
   let path = roomPath+room_id+'.json'
@@ -1339,13 +1350,26 @@ async function stopMssion(_client, _mission, _status, _end) {
   let count = await _client.hgetValue(roomKey, 'count')
   let macs =  await _client.hgetValue(roomKey, 'macs')
   let currentStatus = await _client.hgetValue(roomKey, 'status')
+  //Jason add for open door on 2020.10.14
+  let doorMac = await _client.hgetValue(roomKey, 'doorMac')
+ 
   if(currentStatus === null) {//Check redis value
     toLog('','@@ from redis null')
     currentSequence = roomObj['sequence']
     count = roomObj['count']
     macs = roomObj['macs']
     currentStatus = roomObj['status']
+    //Jason add for open door on 2020.10.14
+    doorMac = roomObj['doorMac']
   }
+
+  //Set door open 21
+  if(_status === code.mission_pass || _status === code.mission_fail) {
+    let doorObj = getMqttObject( doorMac, code.node_on_command, end, 1)
+    sendMqttMessage(socket, doorObj, 0)
+    toLog('', '@@ mqtt open door')
+  }
+
   if(typeof currentStatus === 'string') {
     currentSequence = parseInt(currentSequence)
     currentStatus = parseInt(currentStatus)
@@ -1354,14 +1378,26 @@ async function stopMssion(_client, _mission, _status, _end) {
     if(macs)
       macs = JSON.parse(macs)
   }
-  toLog(3,'currentSequence :'+ currentSequence + ', currentStatus :'+currentStatus)
+
+  toLog(4,'currentSequence :'+ currentSequence + ', currentStatus :'+currentStatus)
+  
+  //Jason ?????????????????????????????????????????????????
   if(currentSequence === 0) {
     redisClient.hsetValue(roomKey, 'status', _status)
     redisClient.quit()
     return 
   }
+
+  //setMissionEnd update status,end time ------------------------------
   let mac = macs[(currentSequence-1)]
-  toLog(4,'last mac :'+ mac)
+  let test = await _client.hsetValue(mac, 'end', _end)
+  test = await _client.hsetValue(roomKey, 'end', _end)
+  test = await _client.hsetValue(roomKey, 'status', _status)
+  roomObj['status'] = _status
+  roomObj['end'] = _end
+  file.saveJsonToFile(path, roomObj)
+  toLog(4,'save redis mac :'+ mac)
+  
   if(true) {
     toLog(5,'Before save team record')
     let result2 = await saveTeamRecord(_client, room_id, _status, _end)
@@ -1372,27 +1408,21 @@ async function stopMssion(_client, _mission, _status, _end) {
     for(let n=0;n<macs.length;n++) {
       if((n+1)<currentSequence) {
         let result = await saveRecord(_client, room_id, macs[n], team_record_id,null)
-        console.log('saveRecord id:'+result.id)
+        //console.log('saveRecord id:'+result.id)
       }
       //console.log(macs[n])
     }
     let result1 = await saveRecord(_client, room_id, mac,team_record_id, _end)
-    console.log('saveRecord id:'+result1.id)
+    //console.log('saveRecord id:'+result1.id)
     toLog(6,'After save record')
   }
-  //setMissionEnd update status,end time ------------------------------
+  
 
-  _client.hsetValue(mac, 'end', _end)
-  _client.hsetValue(roomKey, 'end', _end)
-  _client.hsetValue(roomKey, 'status', _status)
-  roomObj['status'] = _status
-  roomObj['end'] = _end
-  file.saveJsonToFile(path, roomObj)
-
-  //Set end node to web
+  //Send socket to web for change node status
   let cmdObj = getMqttObject( mac, _status, _end, 1)
   //Send MQTT to node
   sendSocketCmd(socket, cmdObj)
+  //Send MQTT energemcy stop command to node
   if(_status === code.emergency_stop) {
     for(let k=0;k<macs.length;k++) {
       let endNodeObj = getMqttObject( macs[k], code.emergency_stop_command, _end, 1)

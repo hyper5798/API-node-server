@@ -194,8 +194,15 @@ module.exports = async function createServer () {
     socket.emit('news', { hello: 'world' });
 
     socket.on('web', function (data) {
-      console.log(data)
-      mqttClient.checkWSConnect()
+      if(typeof data === 'string') {
+        mqttClient.checkWSConnect()
+      } else {
+        if(data.hasOwnProperty('mode')){
+          //Change mode
+          socket.broadcast.emit('change_mode', data)
+        }
+      }
+      
     });//send_switch_command
 
     socket.on('mqtt_sub', function (data) {
