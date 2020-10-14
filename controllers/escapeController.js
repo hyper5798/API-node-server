@@ -1275,7 +1275,7 @@ async function switchMqttCmd(obj) {
       setDefaultStatus(redisClient, roomKey, macAddr)
     }
     redisClient.quit()
-  } else if(command === code.mission_end_command) {//24 mission end
+  } else if(command === code.mission_end) {//2 mission end
     toLog(2, 'mission_end_command')
     let room_id = mission.room_id
     let roomKey = 'room'+room_id
