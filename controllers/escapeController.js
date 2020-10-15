@@ -761,20 +761,20 @@ module.exports = {
         reduce = reduce + time
         //Save to redis
         toLog(3,'Save to redis')
-        console.log('reduce:'+reduce+', prompt:'+prompt)
-        redisClient.hsetValue(roomKey, 'reduce', reduce)
-        redisClient.hsetValue(roomKey, 'prompt', prompt)
-        toLog(3,'Save to file')
-        //Save to file
-        roomObj.reduce = reduce
-        roomObj.prompt = prompt
-        file.saveJsonToFile(path, roomObj)
+        console.log('reduce:'+reduce+', prompt:'+reduce)
+        //Save prompt, reducr to redis and file
+        saveRoom(redisClient,roomObj,{
+          roomId: room_id,
+          reduce: reduce,
+          prompt: reduce
+        })
         //Send sock to web
         toLog(4,'Send sock to web')
         let now = new Date().toISOString
         let cmdObj = getMqttObject( 'reduce', time, now, 1)
         //Send socket to web
         sendSocketCmd(socket, cmdObj)
+        redisClient.quit()
         toLog(5,'@@ response 200 ')
         resResources.doSuccess(res, 'Set reduce ok')
       } catch (error) {
@@ -823,14 +823,14 @@ async function switchMode(_room_id, _mode) {
   } else {
     oldMode = parseInt(oldMode)
   }
-  redisClient.hsetValue(roomKey,'mode',_mode)
-  
-  //Set to file
-  toLog(3,'Save mode to file')
   if(typeof _mode === 'string')
     _mode = parseInt(_mode)
-  roomObj['mode'] = _mode
-  file.saveJsonToFile(path, roomObj)
+  //Save mode to redis and file
+  saveRoom(redisClient,roomObj,{
+    roomId: room_id,
+    mode: _mode,
+  })
+
   //Set send objec
   //Send sock to web
   toLog(4,'Send sock to web')
@@ -853,11 +853,11 @@ async function switchMode(_room_id, _mode) {
       // MQTT mode command 
       sendMqttMessage(socket, mObj, m*500)
     }
-    /*if(oldMode === code.security_mode_command) {
+    if(oldMode === code.security_mode_command) {
       //Send MQTT node_off_command to seurity node
       toLog(6,'Before get security device')
-      //let sList = await dataResources.getSeurityNode(_room_id)
-      let sList = await dataResources.getMissions(_room_id, null)
+      let sList = await dataResources.getSeurityNode(_room_id)
+      //let sList = await dataResources.getMissions(_room_id, null)
       toLog(6,'After get security device :'+sList.length)
 
       for(let n=0;n<sList.length;n++) {
@@ -867,15 +867,15 @@ async function switchMode(_room_id, _mode) {
         // MQTT secrity node off command 
         sendMqttMessage(socket, nObj, n*500)
       }
-    }*/
+    }
     
   } else if(_mode===code.security_mode_command){
     //Jason note : ?????????????????????????????????????????????
     //Send MQTT node_off_command to seurity node
     let actionTime = new Date().toISOString
-    /*toLog(5,'Before get security device')
-    //let sList = await dataResources.getSeurityNode(_room_id)
-    let sList = await dataResources.getMissions(_room_id, null)
+    toLog(5,'Before get security device')
+    let sList = await dataResources.getSeurityNode(_room_id)
+    //let sList = await dataResources.getMissions(_room_id, null)
     toLog(5,'After get security device :'+sList.length)
 
     for(let n=0;n<sList.length;n++) {
@@ -884,7 +884,7 @@ async function switchMode(_room_id, _mode) {
       let nObj = getMqttObject( device.macAddr, code.node_on_command, actionTime, 1)
       // MQTT secrity node off command 
       sendMqttMessage(socket, nObj, n*500)
-    }*/
+    }
   
   }
   redisClient.quit()
