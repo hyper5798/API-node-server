@@ -182,19 +182,19 @@ async function handleUpload1 (mObj) {
     console.log(getDatestring() +'## Save message success')
   }
   //Jason save MQTT to report -------- end
-  
-  if(obj.type_id != 99) return
+  //98:security node 99:controller
+  if(obj.type_id != 99 && obj.type_id != 98) return
   let mac = obj.macAddr
   let status = obj.key1
   let command = obj.key2
   console.log(getDatestring() +'## mac : '+mac+', code '+status+' -> '+getCode(status))
-  if(command) {
+  if(command ) {
     console.log(getDatestring() +'## command '+command+' -> '+getCode(command) + ' ack')
-    return 
+    //return 
   }
 
   if(status === code.ack) {
-    return 
+    //return 
   }
   //socket.emit('test_command',JSON.stringify(obj));
   socket.emit('MQTT_YESIO_UL',obj);
