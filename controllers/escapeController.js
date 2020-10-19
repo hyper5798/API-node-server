@@ -142,13 +142,11 @@ module.exports = {
         } else {
           //判斷是否有此裝置
         }
-		    toLog(3,'get macAddr : '+ macAddr)
-        let cmdObj = getMqttObject( macAddr, command, receiveTime, 1)
-        //Save mac status to report
-        //dataResources.saveReport(cmdObj)
-        //Send MQTT command to node
-        sendMqttMessage(socket, cmdObj)//To server.js mqtt client send message
+        toLog(3,'get macAddr : '+ macAddr)
         
+        //Send MQTT command to node
+        let cmdObj = getMqttObject( macAddr, command, receiveTime, 1)
+        sendMqttMessage(socket, cmdObj)//To server.js mqtt client send message
         
 		    toLog(4,'response 200')
         resResources.doSuccess(res, 'Send mqtt command ok')
@@ -258,10 +256,11 @@ module.exports = {
             break
           }
         }
-
+    
         let macList = []
         let inx = 0
         let lists = JSON.parse(JSON.stringify(mList))
+        let changePass = {}
         if(defaultIndex > -1) 
           lists.splice(defaultIndex, 1);
         toLog(8,'save mission redis and random script')
@@ -284,9 +283,6 @@ module.exports = {
             sendSocketCmd(socket, cmdObj)
             //code.mission_start_command 23: 啟動 node
             let startNodeObj = getMqttObject( mission.macAddr, code.mission_start_command, actionTime, 1)
-            //Save mac status to report
-            //dataResources.saveReport(startNodeObj)
-            /*** MQTT command 23 ***/
             sendMqttMessage(socket, startNodeObj, 1000)
             
             initMacRedis(redisClient,mission.macAddr, room_id, mission.id,mission.sequence, actionTime )
@@ -297,30 +293,36 @@ module.exports = {
          
           }
           mission.script = getScript(scriptGroup[mission.id])
+          if(mission.script.next_pass!==null && mission.script.next_sequence!==null) {
+            changePass[mission.script.next_sequence] = mission.script.next_pass
+          }
+          if(changePass[mission.sequence]) {
+            mission.script.pass = changePass[mission.sequence]
+          }
+
           if(typeof mission.script.pass === 'string') {
             mission.script.pass = JSON.parse(mission.script.pass)
           }
           let time = new Date().toISOString()
-          let passObj = getMqttObject( mission.macAddr, mission.script.pass, time, 1)
+          let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
           /*** MQTT pass ***/
           sendMqttMessage(socket, passObj, ((i+1)*500))
         }
-        roomObj.room = room
-        roomObj.members = members
-        roomObj.status = code.mission_start//1
-        roomObj.sequence = 1
-        roomObj.start = actionTime
-        roomObj.doorMac = doorMac
-        roomObj.missions = lists
-        roomObj.macs = macList
-        roomObj.count = macList.length
-        
-        initRoomRedis(redisClient, room, teamId, members, actionTime,macList)
- 
-        
-        
-        file.saveJsonToFile(path, roomObj)
-        let data = {"room":roomObj.room, "members":roomObj.members, "missions":roomObj.missions }
+        //Save room to redis and file
+        saveRoom(redisClient,roomObj,{
+          roomId:room_id,
+          room:roomObj.room,
+          members:roomObj.members,
+          missions: lists,
+          status:code.mission_start,
+          sequence:1,
+          macs:macList,
+          count:macList.length,
+          start: actionTime
+        })
+
+        redisClient.quit()
+        let data = {"room":roomObj.room, "members":roomObj.members, "missions":lists }
         toLog(10,'response 200')
         resResources.getDtaSuccess(res, data)
       } catch (error) {
@@ -453,10 +455,8 @@ module.exports = {
         let result = await dataResources.saveReport(cmdObj)
         toLog(7,'After save report')
         
-        let startNodeObj = getMqttObject( mac2, code.mission_start_command, startTime, 1)
-        //Save mac2 command to report
-        //dataResources.saveReport(startNodeObj)
         //MQTT Command 23: 啟動 node
+        let startNodeObj = getMqttObject( mac2, code.mission_start_command, startTime, 1)
         sendMqttMessage(socket, startNodeObj, 0)
         
         if(result.id > 0) {
@@ -562,12 +562,9 @@ module.exports = {
         toLog(7,'After save report')
         //Send socket to web
         sendSocketCmd(socket, cmdObj)
-        //Command 24: 停止 node
         
-        let endNodeObj = getMqttObject( mac, code.mission_end_command, endTime, 1)
-        //Save mac command to report
-        //dataResources.saveReport(endNodeObj)
         //Send mqtt command 24 to Node
+        let endNodeObj = getMqttObject( mac, code.mission_end_command, endTime, 1)
         sendMqttMessage(socket, endNodeObj, 0)
         
         
@@ -874,8 +871,8 @@ async function switchMode(_room_id, _mode) {
     for(let n=0;n<sList.length;n++) {
     
       let device = sList[n]
+      // MQTT secrity node on command 
       let nObj = getMqttObject( device.macAddr, code.node_on_command, actionTime, 1)
-      // MQTT secrity node off command 
       sendMqttMessage(socket, nObj, n*500)
     }
   
@@ -939,7 +936,7 @@ function saveRoom(_client,rObj, myJson) {
   }
     
   if(myJson.hasOwnProperty('macs')){
-    _client.hsetValue(key, 'macs', myJson.macs)
+    _client.hsetValue(key, 'macs', JSON.stringify(myJson.macs))
     rObj.macs = myJson.macs
   }
     
@@ -954,8 +951,23 @@ function saveRoom(_client,rObj, myJson) {
   }
 
   if(myJson.hasOwnProperty('door_mission')){
-    _client.hsetValue(key, 'door_mission', myJson.end)
+    _client.hsetValue(key, 'door_mission', JSON.stringify(myJson.door_mission))
     rObj.door_mission = myJson.door_mission
+  }
+
+  if(myJson.hasOwnProperty('room')){
+    //_client.hsetValue(key, 'room', myJson.room)
+    rObj.room = myJson.room
+  }
+
+  if(myJson.hasOwnProperty('members')){
+    //_client.hsetValue(key, 'members', JSON.stringify(myJson.members))
+    rObj.members = myJson.members
+  }
+
+  if(myJson.hasOwnProperty('missions')){
+    //_client.hsetValue(key, 'missions', JSON.stringify(myJson.missions))
+    rObj.missions = myJson.missions
   }
    
   file.saveJsonToFile(path, rObj)
@@ -1043,7 +1055,7 @@ function sendMqttCmd(_socket, msg_obj) {
 function getMqttObject( _mac, _command, _time, _count) {
   if(typeof _command === 'object')
     //return {"macAddr":_mac,"pass":_command.value,"recv":_time,"fport":99,"frameCnt":_count}
-    return {"macAddr":_mac,"pass":_command.value,"recv":_time,"fport":99}
+    return {"macAddr":_mac,"pass":_command.pass,"recv":_time,"fport":99}
   else  
     //return {"macAddr":_mac,"data":{"key1":_command},"recv":_time,"fport":99,"frameCnt":_count}
     return {"macAddr":_mac,"data":{"key1":_command},"recv":_time,"fport":99}
@@ -1410,6 +1422,8 @@ async function toStopMssion(_client, _roomId, _status, _end) {
     let team_record_id = result2.id
     toLog(6,'Before save record')
     
+
+    //Save mission report
     for(let n=0;n<macs.length;n++) {
       if((n+1)<currentSequence) {
         let result = await saveRecord(_client, _roomId, macs[n], team_record_id,null)
@@ -1427,13 +1441,18 @@ async function toStopMssion(_client, _roomId, _status, _end) {
   let cmdObj = getMqttObject( mac, _status, _end, 1)
   //Send MQTT to node
   sendSocketCmd(socket, cmdObj)
-  //Send MQTT energemcy stop command to node
-  if(_status === code.emergency_stop) {
-    for(let k=0;k<macs.length;k++) {
-      let endNodeObj = getMqttObject( macs[k], code.emergency_stop_command, _end, 1)
-      sendMqttMessage(socket, endNodeObj, (k+1)*500)
+  //Jason modify for send MQTT stop command to game node on 2020.10.19
+  if(_status === code.emergency_stop || _status === code.mission_fail) {
+    let command = code.stop_command;//mission fail command:25 
+    let cmdTime = new Date().toISOString()
+    //If emergency command:26
+    if(_status === code.emergency_stop) command = code.emergency_stop_command;//26
+    
+    for(let n=0;n<macs.length;n++) {
+      let cmdObj = getMqttObject( macs[n], command, cmdTime, 1)
+      sendMqttMessage(socket, cmdObj, 0)
     }
-  } 
+  }
   
   
   _client.quit()
