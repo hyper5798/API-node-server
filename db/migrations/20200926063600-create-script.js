@@ -37,7 +37,16 @@ module.exports = {
         type: Sequelize.STRING
       },
       pass: {
-        type: Sequelize.TEXT
+        allowNull: true,
+        type: Sequelize.STRING
+      },
+      next_pass: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
+      next_sequence: {
+        allowNull: true,
+        type: Sequelize.INTEGER
       },
       note: {
         allowNull: true,

@@ -8,7 +8,9 @@ module.exports = {
       prompt1: '找尋槍',
       prompt2: '找尋烏雲',
       prompt3: '連擊1次',
-      pass:'{"key":"code","value":"12345"}',
+      pass:'12345',
+      next_sequence: 2,
+      next_pass: '9999',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -19,7 +21,9 @@ module.exports = {
       prompt1: '找尋槍',
       prompt2: '找尋烏雲',
       prompt3: '連擊2次',
-      pass:'{"key":"code","value":"54321"}',
+      pass:'54321',
+      next_sequence: 2,
+      next_pass: '8888',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -30,7 +34,9 @@ module.exports = {
       prompt1: '找尋槍',
       prompt2: '找尋烏雲',
       prompt3: '連擊3次',
-      pass:'{"key":"code","value":"98745"}',
+      pass:'98745',
+      next_sequence: 2,
+      next_pass: '7777',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -41,7 +47,7 @@ module.exports = {
       prompt1: '找尋球',
       prompt2: '找尋籃框',
       prompt3: '投進1次',
-      pass:'{"key":"key","value":1}',
+      pass:'1',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -52,7 +58,7 @@ module.exports = {
       prompt1: '找尋球',
       prompt2: '找尋籃框',
       prompt3: '投進2次',
-      pass:'{"key":"key","value":2}',
+      pass:'2',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -63,7 +69,7 @@ module.exports = {
       prompt1: '找尋球',
       prompt2: '找尋籃框',
       prompt3: '投進3次',
-      pass:'{"key":"key","value":3}',
+      pass:'3',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -85,7 +91,7 @@ module.exports = {
       prompt1: '找尋鼓',
       prompt2: '找尋鼓棒',
       prompt3: '連擊2次',
-      pass:'{"key":"code","value":"65781"}',
+      pass:'65781',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -96,7 +102,7 @@ module.exports = {
       prompt1: '找尋鼓',
       prompt2: '找尋鼓棒',
       prompt3: '連擊3次',
-      pass:'{"key":"code","value":"98745"}',
+      pass:'98745',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -107,7 +113,7 @@ module.exports = {
       prompt1: '找尋弓箭',
       prompt2: '找尋箭靶',
       prompt3: '擊中紅心1次',
-      pass:'{"key":"code","value":"98745"}',
+      pass:'98745',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -118,7 +124,7 @@ module.exports = {
       prompt1: '找尋弓箭',
       prompt2: '找尋箭靶',
       prompt3: '擊中8分1次',
-      pass:'{"key":"code","value":"65781"}',
+      pass:'65781',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -129,7 +135,7 @@ module.exports = {
       prompt1: '找尋弓箭',
       prompt2: '找尋箭靶',
       prompt3: '擊中5分1次',
-      pass:'{"key":"code","value":"98745"}',
+      pass:'98745',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -140,7 +146,7 @@ module.exports = {
       prompt1: '找尋鑼',
       prompt2: '找尋鑼棒',
       prompt3: '連擊1次',
-      pass:'{"key":"code","value":"27846"}',
+      pass:'27846',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -151,7 +157,7 @@ module.exports = {
       prompt1: '找尋鑼',
       prompt2: '找尋鑼棒',
       prompt3: '連擊2次',
-      pass:'{"key":"code","value":"36589"}',
+      pass:'36589',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -162,7 +168,7 @@ module.exports = {
       prompt1: '找尋鑼',
       prompt2: '找尋鑼棒',
       prompt3: '連擊3次',
-      pass:'{"key":"code","value":"69874"}',
+      pass:'69874',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -173,7 +179,7 @@ module.exports = {
       prompt1: '找尋密碼表',
       prompt2: '大門右側',
       prompt3: '藏頭',
-      pass:'{"key":"code","value":"27846"}',
+      pass:'27846',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -184,7 +190,7 @@ module.exports = {
       prompt1: '找尋密碼表',
       prompt2: '電線桿',
       prompt3: '去1加2',
-      pass:'{"key":"code","value":"36589"}',
+      pass:'36589',
       created_at: new Date(),
       updated_at: new Date()
     },{
@@ -195,7 +201,7 @@ module.exports = {
       prompt1: '矮木叢數量',
       prompt2: '大門數量',
       prompt3: '電線杆數量',
-      pass:'{"key":"code","value":"168"}',
+      pass:'16868',
       created_at: new Date(),
       updated_at: new Date()
     }]);
