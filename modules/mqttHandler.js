@@ -1,16 +1,15 @@
 
 const mqttConfig = require('../config/mqtt.json')
-const mqtt = require('mqtt')
-const Report = require('../db/models').report
+
 const Promise = require('bluebird')
 const util = require('./util')
-const io = require('socket.io-client');
+let macList = [];
+
+//Socket client ---------------------------------------------------
 const appConfig = require('../config/app.json')
 let wsUrl ='http://localhost:'+appConfig.port
-const socket = io.connect(wsUrl, {reconnect: true});
-const redisHandler  = require('../modules/redisHandler')
-let macList = [];
-const code = require('../doc/setting/code.json')
+const io = require('socket.io-client');
+const socket = io.connect(wsUrl, {reconnect: true})
 
 socket.on('connect',function(){
   socket.emit('mqtt_sub','**** mqtt_sub socket cient is ready');
@@ -29,7 +28,7 @@ socket.on('news',function(m){
   console.log(m)
 });
 
-
+//MQTT client ---------------------------------------------------
 let options = {
 	port: mqttConfig.port,
 	protocolId: 'MQIsdp',
@@ -62,6 +61,7 @@ class MqttHandler {
    
   connect() {
     // Connect mqtt with credentials (in case of needed, otherwise we can omit 2nd param)
+    const mqtt = require('mqtt')
     options.host = this.host
     options.username = this.username
     options.password = this.password
@@ -71,7 +71,7 @@ class MqttHandler {
     this.mqttClient.on('error', (err) => {
       console.log(err);
       if(err === 'client disconnecting') 
-      this.mqttClient.reconnect();
+        this.mqttClient.reconnect();
       //this.mqttClient.end();
     });
 
@@ -96,7 +96,6 @@ class MqttHandler {
 
   // Sends a mqtt message to topic: mytopic
   sendMessage(topic, message) {
-    
     this.mqttClient.publish(topic, message);
   }
 
@@ -134,7 +133,6 @@ module.exports = MqttHandler;
 function handleDownload (topic,msg) {  
   let message = msg.toString()
   console.log('handleDownload: %s', message )
-  
 }
 
 //check mac and switch by topic
@@ -187,53 +185,23 @@ async function handleUpload1 (mObj) {
   let mac = obj.macAddr
   let status = obj.key1
   let command = obj.key2
-  console.log(getDatestring() +'## mac : '+mac+', code '+status+' -> '+getCode(status))
+  const Code = require('../doc/setting/code.json')
+  console.log(getDatestring() +'## mac : '+mac+', code '+status+' -> '+getCode(Code,status))
   if(command ) {
-    console.log(getDatestring() +'## command '+command+' -> '+getCode(command) + ' ack')
+    console.log(getDatestring() +'## command '+command+' -> '+getCode(Code, command) + ' ack')
     //return 
   }
 
+  /*const code = require('../doc/setting/code.json')
   if(status === code.ack) {
-    //return 
-  }
+    return 
+  }*/
   //socket.emit('test_command',JSON.stringify(obj));
   socket.emit('MQTT_YESIO_UL',obj);
-
-  //要透過mac取room_id
-  /*let redisClient = new redisHandler(0)
-  redisClient.connect()
-  let room_id = await redisClient.hgetValue(mac, 'room_id')
-  
-  //if(room_id == null) return;
-  //let roomKey = 'room'+room_id
-
-  
-  
-  //For record the door close status
-  
-  if( status === 10) {
-    //let doorStatus = await redisClient.hgetValue(roomKey, 'door')
-    let doorStatus = await redisClient.hgetValue(mac, 'door')
-    if(doorStatus) {
-      doorStatus = parseInt(doorStatus)
-    }
-    
-    if(doorStatus && doorStatus===code.door_on_notify) {//11
-      //redisClient.hsetValue(roomKey, 'door', 10)
-      redisClient.hsetValue(mac, 'door', code.door_off_notify)
-    }
-  }
-  redisClient.quit()
-  if( status < 20) {
-    //For websocket to webui
-    socket.emit('mqtt_sub',JSON.stringify(obj));
-  }*/
-  
-  
-  
 }
 
-function getCode(_key) {
+function getCode(code, _key) {
+  
   let mykey = 'Not_found'
   for(let key in code){
     if(code[key] === _key) {
@@ -292,6 +260,7 @@ function getAdjustObj(jsonObj) {
 }
 
 async function saveMessage (jsonObj) {
+  const Report = require('../db/models').report
   return await Promise.resolve(Report.create(jsonObj))
 }
 
