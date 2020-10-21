@@ -1,30 +1,22 @@
-
-const Promise = require('bluebird')
-const Type = require('../db/models').type
-const Device = require('../db/models').device
-const Product = require('../db/models').product
-const redisHandler  = require('./redisHandler')
-let redisClient = new redisHandler(1);
-redisClient.connect();
-setTimeout(init, 1500);
+setTimeout(init, 500);
 
 module.exports = {
   init,
-  setValue,
-  getValue,
-  hsetValue,
-  hgetValue,
-  remove,
   parsingMsg,
   encode_base64,
   decode_base64
 }
 
 async function init() {
+  const redisHandler  = require('./redisHandler')
+  let redisClient = new redisHandler(1);
+  redisClient.connect();
+  const Type = require('../db/models').type
+  const Product = require('../db/models').product
 
   let clean = await redisClient.flush()
   console.log('init clean redis: '+ clean)
- 
+  
   let types = await Promise.resolve(Type.findAll())
   let products = await Promise.resolve(Product.findAll())
   if(types.length>0) {
@@ -41,8 +33,8 @@ async function init() {
         }
            
         //await setValue(key, value);
-        hsetValue(key, 'fieids', fields);
-        hsetValue(key, 'rules', rules);
+        redisClient.hsetValue(key, 'fieids', fields);
+        redisClient.hsetValue(key, 'rules', rules);
     }
   }
   if(products.length>0) {
@@ -52,7 +44,8 @@ async function init() {
         let time = new Date(products[i].created_at).toISOString()
         if(debug)
             console.log('mac'+mac+' -> '+ time)
-        hsetValue(key, mac, time);
+
+        redisClient.hsetValue(key, mac, time);
     }
   }
   
@@ -65,32 +58,17 @@ async function init() {
     for(let i=0; i<products.length;++i){
         let id = products[i].id
         let mac = products[i].macAddr
-        await hsetValue('product', mac, id);
+        await redisClient.hsetValue('product', mac, id);
     }
   }*/
-}
-
-function  setValue(key,value) {
-  redisClient.setValue(key, value)
-};
-
-function  getValue(key) {
-  return redisClient.getValue(key)
-}
-
-function  hsetValue(key, field, value) {
-  redisClient.hsetValue(key, field, value)
-};
-
-function  hgetValue(key, field) {
-  return redisClient.hgetValue(key, field)
-}
-
-function remove(key) {
-  redisClient.remove(key)
+  redisClient.quit()
 }
 
 async function parsingMsg(obj) {
+    const Promise = require('bluebird')
+    const redisHandler  = require('./redisHandler')
+    let redisClient = new redisHandler(1);
+    redisClient.connect();
     let fport = obj.fport
     //Get data attributes
     let mData = obj.data
@@ -113,8 +91,9 @@ async function parsingMsg(obj) {
     if(obj.fport){
         let mType = 'type'+ obj.fport
         //let mapStr = await getValue(mType)
-        let mapStr = await hgetValue(mType, 'rules')
+        let mapStr = await redisClient.hgetValue(mType, 'rules')
         console.log(mapStr)
+        redisClient.quit()
         if(mapStr) {
             let map = JSON.parse(mapStr)
             let mInfo = getTypeData(mData,map)
