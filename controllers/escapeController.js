@@ -815,61 +815,75 @@ async function switchMode(_room_id, _mode) {
     toLog(3, 'reset_command')
     let currentMode = await redisClient.hgetValue(roomKey, 'mode')
     let currentStatus = await redisClient.hgetValue(roomKey, 'status')
-    if(currentMode) {
-      currentMode = parseInt(currentMode)
-    } else {
-      currentMode = 30
-    }
-    if(currentStatus) currentStatus = parseInt(currentStatus)
-　　
-　　console.log('currentMode:'+currentMode+', currentStatus:'+currentStatus)
-
-    if(currentMode === 32 && currentStatus === 7) {//Security reset
-      saveRoom(redisClient,null,{
-        roomId:_room_id,
-        sequence: 0,
-        status: 0,
-        prompt: 0,
-        reduce: 0,
-        team_id: 0
-      })
-      toLog(4,'Before get security nodes')
-      let dList = await dataResources.getSecurityNode(_room_id)
-      toLog(4,'After get security nodes :'+dList.length)
-      let time = new Date().toISOString()
-      for(let k=0;k<dList.length;k++) {
-        let tmp = dList[k]
-        
-        //Send MQTT on command to security node
-        let onObj = getMqttObject( tmp.macAddr, code.node_on_command, time, 1)
-        sendMqttMessage(socket, onObj, ((k+1)*interval))
+    try {
+      if(currentMode) {
+        currentMode = parseInt(currentMode)
+      } else {
+        currentMode = 30
       }
-    } else { //System reset
-      setRoomDefault(redisClient, _room_id ,null)
-      toLog(4,'Before get missions')
-      let mList = await dataResources.getMissions(_room_id, null)
-      toLog(4,'After get missions :'+mList.length)
       
-      let time = new Date().toISOString()
-      for(let k=0;k<mList.length;k++) {
-        let tmp = mList[k]
-        if(tmp.sequence===0) continue
-        //Send MQTT reset command to node
-        let resetObj = getMqttObject( tmp.macAddr, code.reset_command, time, 1)
-        sendMqttMessage(socket, resetObj, ((k+1)*interval))
-      }
-
-      toLog(5,'Before get security nodes')
-      let dList = await dataResources.getSecurityNode(_room_id)
-      toLog(5,'After get security nodes :'+dList.length)
-      for(let k=0;k<mList.length;k++) {
-        let tmp = dList[k]
+      if(currentStatus) {
+        currentStatus = parseInt(currentStatus)
         
-        //Send MQTT on command to security node
-        let onObj = getMqttObject( tmp.macAddr, code.node_off_command, time, 1)
-        sendMqttMessage(socket, onObj, ((k+1)*interval))
+      } else {
+        currentStatus = 0
       }
+    } catch (error) {
+      console.log('error:'+error.message)
     }
+    
+    try {
+      if(currentMode === 32 && currentStatus === 7) {//Security reset
+        saveRoom(redisClient,null,{
+          roomId:_room_id,
+          sequence: 0,
+          status: 0,
+          prompt: 0,
+          reduce: 0,
+          team_id: 0
+        })
+        toLog(4,'Before get security nodes')
+        let dList = await dataResources.getSecurityNode(_room_id)
+        toLog(4,'After get security nodes :'+dList.length)
+        let time = new Date().toISOString()
+        for(let k=0;k<dList.length;k++) {
+          let tmp = dList[k]
+          
+          //Send MQTT on command to security node
+          let onObj = getMqttObject( tmp.macAddr, code.node_on_command, time, 1)
+          sendMqttMessage(socket, onObj, ((k+1)*interval))
+        }
+      } else { //System reset
+        setRoomDefault(redisClient, _room_id ,null)
+        toLog(4,'Before get missions')
+        let mList = await dataResources.getMissions(_room_id, null)
+        toLog(4,'After get missions :'+mList.length)
+        
+        let time = new Date().toISOString()
+        for(let k=0;k<mList.length;k++) {
+          let tmp = mList[k]
+          if(tmp.sequence===0) continue
+          //Send MQTT reset command to node
+          let resetObj = getMqttObject( tmp.macAddr, code.reset_command, time, 1)
+          sendMqttMessage(socket, resetObj, ((k+1)*interval))
+        }
+  
+        toLog(5,'Before get security nodes')
+        let dList = await dataResources.getSecurityNode(_room_id)
+        toLog(5,'After get security nodes :'+dList.length)
+        for(let k=0;k<mList.length;k++) {
+          let tmp = dList[k]
+          
+          //Send MQTT on command to security node
+          let onObj = getMqttObject( tmp.macAddr, code.node_off_command, time, 1)
+          sendMqttMessage(socket, onObj, ((k+1)*interval))
+        }
+      }
+    } catch (error) {
+      console.log('error'+error.message)
+    }
+
+    
 
     
     redisClient.quit()

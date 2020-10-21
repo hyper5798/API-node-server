@@ -1,8 +1,6 @@
 const Redis = require('redis')
 const Bluebird = require('bluebird')
 const Promise = require('bluebird')
-const file = require('../modules/fileTools')
-let logPath = '../config/log.txt';
 const appConfig = require('../config/app.json')
 Bluebird.promisifyAll(Redis.RedisClient.prototype)
 Bluebird.promisifyAll(Redis.Multi.prototype)
