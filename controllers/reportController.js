@@ -4,15 +4,11 @@
  * Module dependencies
  */
 
-const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Cp = require('../db/models').cp
 const App = require('../db/models').app
-const Report = require('../db/models').report
 const Promise = require('bluebird')
-const redisHandler  = require('../modules/redisHandler')
-const redisClient = new redisHandler(1)
-redisClient.connect();
+
 
 module.exports = {
     async index(req, res, next) {
@@ -167,8 +163,12 @@ module.exports = {
   },
 
   async write(req, res, next) {
+    const Report = require('../db/models').report
     try {
       //Get key and id
+      const redisHandler  = require('../modules/redisHandler')
+      const redisClient = new redisHandler(1)
+      redisClient.connect();
       let api_key = req.query.api_key
       let app_id = getAppId(api_key) 
       if(!app_id) {
@@ -223,7 +223,7 @@ module.exports = {
 
       console.log(obj);
       let newReport = await Report.create(obj)
-      
+      redisClient.quit()
       resResources.doSuccess(res, 'Create report success')
       
     } catch (e) {
@@ -232,6 +232,7 @@ module.exports = {
   },
 
   async read(req, res, next) {
+    const Report = require('../db/models').report
     try {
       //Get key and id
       let api_key = req.query.api_key

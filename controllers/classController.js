@@ -4,7 +4,6 @@
  * Module dependencies
  */
 
-const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Class = require('../db/models').classes
 

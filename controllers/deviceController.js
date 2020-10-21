@@ -4,14 +4,9 @@
  * Module dependencies
  */
 
-const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Device = require('../db/models').device
-const Product = require('../db/models').product
-const User = require('../db/models').user
 const Promise = require('bluebird')
-//const redisHandler  = require('../modules/redisHandler')
-
 
 module.exports = {
   async index(req, res, next) {
@@ -46,8 +41,8 @@ module.exports = {
   async binding(req, res, next) {
     try {
       //Get input data
+      const User = require('../db/models').user
       let verify = req.user
-      
       let mac = req.body.mac || req.query.mac
       let device_name = req.body.device_name || req.query.device_name
       let description = req.body.description || req.query.description
@@ -109,7 +104,8 @@ module.exports = {
   async verify(req, res, next) {
     try {
       //Get input data
-      let verify = req.user
+      const User = require('../db/models').user
+      //let verify = req.user
       
       let mac = req.body.mac || req.query.mac
       
@@ -139,8 +135,8 @@ module.exports = {
 
   async show(req, res, next) { 
     try {
-      let verify = req.user
-      /*if(verify.role_id != 1){
+      /*let verify = req.user
+      if(verify.role_id != 1){
          return resResources.notAllowed(res)
       }*/
       let id = req.params.id
@@ -263,6 +259,7 @@ module.exports = {
 }
 
 async function verifyMac(mac) {
+  const Product = require('../db/models').product
   let product = await Product.findOne({
     where: { "macAddr": mac }, // where 條件
   })
@@ -272,31 +269,6 @@ async function verifyMac(mac) {
     return true
   }
 }
-
-/*Jason mark for binding device is not often performed
-async function verifyMac(mac) {
-  const redisClient = new redisHandler(0)
-  redisClient.connect();
-  
-  let deviceId = await redisClient.hgetValue('product', mac)
-  let product = null
-  if(deviceId === undefined || deviceId === null) {
-    //product = await Product.findAll()
-    product = await Product.findOne({
-      where: { "macAddr": mac }, // where 條件
-      //attribute: []  //指定回傳欄位
-    })
-    if(product== null)
-      return false
-    else {
-      redisClient.hsetValue('product',mac, product.id)
-      return true
-    }
-      
-  } else {
-    return true
-  }
-}*/
 
 function getBindingDevice(mac) {
   return Promise.resolve(Device.findOne({

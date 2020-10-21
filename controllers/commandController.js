@@ -7,10 +7,10 @@
 //const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Command = require('../db/models').command
-const Device = require('../db/models').device
 
 module.exports = {
     async index(req, res, next) {
+      const Device = require('../db/models').device
       try {
         let verify = req.user
         let type_id =  req.query.type_id

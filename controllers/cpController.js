@@ -4,7 +4,6 @@
  * Module dependencies
  */
 
-const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const Cp = require('../db/models').cp
 const Promise = require('bluebird')
