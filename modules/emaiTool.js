@@ -16,7 +16,7 @@ async function sendMail(_email,_subject, _html) {
     }
   }
 
-  let content = 'hi, <br><br>&nbsp;&nbsp;' +_html + '<br><br>  系統通知' + new Date().toLocaleString()
+  let content = 'hi, <br><br>&nbsp;&nbsp;' +_html + '<br><br>  系統通知' + getDate()
   const mailOptions = {
     from: mailConfig.user,
     to: _email,
@@ -40,4 +40,10 @@ async function sendMail(_email,_subject, _html) {
   })
 }
 
-
+//Jason add for fix timezone issue on 2020.10.22
+function getDate() {
+  let d = new Date()
+  //console.log('TimezoneOffset'+d.getTimezoneOffset())
+  d.setTime(d.getTime() + ( (480+d.getTimezoneOffset() ) *60*1000));
+  return d.toLocaleString()
+}
