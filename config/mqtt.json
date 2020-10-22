@@ -1,8 +1,8 @@
 {
     "port": 1883,
     "host": "localhost",
-    "name": "yesio",
-    "password": "yesio12345",
+    "name": "",
+    "password": "",
     "dlTopic": "YESIO/DL/CONTROL",
     "ulTopic1": "YESIO/UL/+",
     "ulTopic2": "GIOT-GW/UL/+",
