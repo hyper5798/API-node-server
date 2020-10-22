@@ -1,0 +1,6 @@
+{
+    "port": 587,
+    "host": "smtp.hostinger.com",
+    "user": "",
+    "pass": ""
+}
