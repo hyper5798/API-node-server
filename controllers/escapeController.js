@@ -302,14 +302,16 @@ module.exports = {
           mission.script = getScript(scriptGroup[mission.id])
           if(mission.script.next_pass!==null && mission.script.next_sequence!==null) {
             changePass[mission.script.next_sequence] = mission.script.next_pass
+            //Jason add relation between pass and next_pass on 2020.10.22
+            mission.script.pass = mission.script.pass + ':' + mission.script.next_pass
           }
           if(changePass[mission.sequence]) {
             mission.script.pass = changePass[mission.sequence]
           }
 
-          if(typeof mission.script.pass === 'string') {
+          /*if(typeof mission.script.pass === 'string') {
             mission.script.pass = JSON.parse(mission.script.pass)
-          }
+          }*/
           let time = new Date().toISOString()
           let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
           /*** MQTT pass ***/
