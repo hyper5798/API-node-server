@@ -1,7 +1,7 @@
 {
   "development": {
-    "username": "",
-    "password": "",
+    "username": "admin",
+    "password": "gemtek12345",
     "database": "yesiodb",
     "host": "localhost",
     "dialect": "mysql"
