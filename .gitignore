@@ -5,10 +5,11 @@ npm-debug.log*
 node_modules
 
 #config directory
-#config
+config
+doc
 
 # Optional npm cache directory
 .npm
 #.vscode
-#.nodered
+.nodered
 

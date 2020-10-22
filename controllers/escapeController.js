@@ -1678,10 +1678,10 @@ async function toGetDefaultMission(roomId) {
   let _inx = getRandom(_scripts.length)
   let _script = _scripts[_inx]
   let m = JSON.parse(JSON.stringify(_mission))
-  if(typeof _script.pass === 'string') {
+  /*if(typeof _script.pass === 'string') {
     _script.pass = JSON.parse(_script.pass)
   }
-  _script.pass = _script.pass.value
+  _script.pass = _script.pass.value*/
   m.script = _script
   return m
 }
