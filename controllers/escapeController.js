@@ -7,15 +7,16 @@
 //const authResources = require('../lib/authResources')
 const resResources = require('../lib/resResources')
 const dataResources = require('../lib/dataResources')
-const appConfig = require('../config/app.json')
-let wsUrl ='http://localhost:'+appConfig.port
-const io = require('socket.io-client')
-const socket = io.connect(wsUrl, {reconnect: true})
-const redisHandler  = require('../modules/redisHandler')
 const file = require('../modules/fileTools')
 const code = require('../doc/setting/code.json')
 let roomPath = './doc/room/room'
 const interval = 500
+
+//Socket client ----------------------------------------------------
+const appConfig = require('../config/app.json')
+let wsUrl ='http://localhost:'+appConfig.port
+const io = require('socket.io-client')
+const socket = io.connect(wsUrl, {reconnect: true})
 
 socket.on('connect',function(){
   socket.emit('mqtt_sub','**** escape controller socket cient is ready');
@@ -56,9 +57,10 @@ module.exports = {
           return missParam(res, 'getDefaultMission', 'miss param')
         }
         //let user_id = parseInt(input.user_id)
-        let room_id = input.room_id
-        let roomkey = 'room'+room_id
-        let redisClient = new redisHandler(0)
+        const room_id = input.room_id
+        const roomkey = 'room'+room_id
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
           redisClient.connect()
         let mission = await redisClient.hgetValue(roomkey, 'door_mission')
         if(mission !== null) {
@@ -88,7 +90,7 @@ module.exports = {
         if(input === null) {
           return missParam(res, 'sendMqttCmd', 'miss param')
         }
-        let room_id = parseInt(input.room_id)
+        const room_id = parseInt(input.room_id)
         let macAddr = input.macAddr
         let command = parseInt(input.command)
         
@@ -97,7 +99,8 @@ module.exports = {
           let roomKey = 'room'+room_id
           let path = roomPath+room_id+'.json'
           let roomObj = file.getJsonFromFile(path)
-          let redisClient = new redisHandler(0)
+          const redisHandler  = require('../modules/redisHandler')
+          const redisClient = new redisHandler(0)
           redisClient.connect()
           let user_id = req.body.user_id || req.query.user_id
           if(user_id === undefined || user_id === null) {
@@ -128,8 +131,8 @@ module.exports = {
           
           redisClient.hsetValue(macAddr,'door', status)
           redisClient.hsetValue(macAddr,'room_id',room_id)
-          //Save room to redis and file
-          saveRoom(redisClient,null,{
+          
+          saveRoom(redisClient,roomObj,{
             roomId:room_id,
             sequence:0,
             doorMac:macAddr,
@@ -159,7 +162,7 @@ module.exports = {
 
     async setMissionAction(req, res, next) {
       
-      let actionTime = new Date().toISOString()
+      const actionTime = new Date().toISOString()
       toLog(1,'setMissionAction -------------------')
       let input = checkInput(req, ['room_id', 'user_id'])
       
@@ -173,7 +176,8 @@ module.exports = {
       let path = roomPath+room_id+'.json'
       let roomObj = file.getJsonFromFile(path)
       //Connect redis
-      let redisClient = new redisHandler(0)
+      const redisHandler  = require('../modules/redisHandler')
+      const redisClient = new redisHandler(0)
       redisClient.connect()
         
       try {
@@ -225,7 +229,7 @@ module.exports = {
           toLog('','@@ Not join team')
           return notAllowed(res, 'setMissionAction','Not join team')
         }
-        let teamId = obj.team_id
+        // let teamId = obj.team_id
         let members = obj.members
 
         //Get room
@@ -314,9 +318,9 @@ module.exports = {
         //Save room to redis and file
         saveRoom(redisClient,roomObj,{
           roomId:room_id,
-          room:roomObj.room,
+          room:room,
           pass_time: room.pass_time,
-          members:roomObj.members,
+          members:members,
           missions: lists,
           status:code.mission_start,
           sequence:1,
@@ -326,7 +330,7 @@ module.exports = {
         })
 
         redisClient.quit()
-        let data = {"room":roomObj.room, "members":roomObj.members, "missions":lists }
+        let data = {"room":room, "members":members, "missions":lists }
         toLog(10,'response 200')
         resResources.getDtaSuccess(res, data)
       } catch (error) {
@@ -343,18 +347,15 @@ module.exports = {
       try {
         let input = checkInput(req, ['room_id', 'user_id'])
       
-      if(input === null) {
-        return missParam(res, 'getMissionData', 'miss param')
-      }
-      //let user_id = parseInt(input.user_id)
-      let room_id = parseInt(input.room_id)
-      let user_id = parseInt(input.user_id)
-      let roomKey = 'room'+room_id
-      let path = roomPath+room_id+'.json'
-      let roomObj = file.getJsonFromFile(path)
-      //Connect redis
-      let redisClient = new redisHandler(0)
-      redisClient.connect()
+        if(input === null) {
+          return missParam(res, 'getMissionData', 'miss param')
+        }
+        //let user_id = parseInt(input.user_id)
+        let room_id = parseInt(input.room_id)
+        let user_id = parseInt(input.user_id)
+        let roomKey = 'room'+room_id
+        let path = roomPath+room_id+'.json'
+        let roomObj = file.getJsonFromFile(path)
         
         if(roomObj === null) {
           return notAllowed(res, 'getMissionData', 'Mission not action yet')
@@ -374,9 +375,10 @@ module.exports = {
     },
 
     async setMissionStart(req, res, next) {
-
+      
       toLog(1,'setMissionStart -------------------')
       try {
+        
         let input = checkInput(req, ['room_id', 'sequence'])
       
         if(input === null) {
@@ -389,8 +391,8 @@ module.exports = {
         let path = roomPath+room_id+'.json'
         let roomObj = file.getJsonFromFile(path)
         //Connect redis
-        
-        let redisClient = new redisHandler(0)
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
         redisClient.connect()
         
         let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
@@ -494,8 +496,8 @@ module.exports = {
         let path = roomPath+room_id+'.json'
         let roomObj = file.getJsonFromFile(path)
         //Connect redis
-        
-        let redisClient = new redisHandler(0)
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
         redisClient.connect()
         
         let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
@@ -586,9 +588,10 @@ module.exports = {
     },
 
     async getMissionStatus(req, res, next) {
-      let newTime = new Date().toISOString()
+      
       toLog(1,'getMissionStatus -------------------')
       try {
+        
         let input = checkInput(req, ['room_id'])
       
         if(input === null) {
@@ -604,8 +607,8 @@ module.exports = {
         let count = 0
         let start = null
         //Connect redis
-        
-        let redisClient = new redisHandler(0)
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
         redisClient.connect()
         
         let data = {
@@ -726,7 +729,7 @@ module.exports = {
     async setReduce(req, res, next) {
       try {
         toLog(1,'setReduce -------------------')
-        //let input = checkInput(req, ['room_id', 'user_id'])
+        
         let input = checkInput(req, ['room_id','prompt','time'])
         
         if(input === null) {
@@ -740,7 +743,8 @@ module.exports = {
         let path = roomPath+room_id+'.json'
         let roomObj = file.getJsonFromFile(path)
         //Connect redis
-        let redisClient = new redisHandler(0)
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
         redisClient.connect()
         let reduce = await redisClient.hgetValue(roomKey, 'reduce')
         toLog(3,'get reduce from redis')
@@ -800,7 +804,8 @@ module.exports = {
 
 async function switchMode(_room_id, _mode) {
   //Connect redis
-  let redisClient = new redisHandler(0)
+  const redisHandler  = require('../modules/redisHandler')
+  const redisClient = new redisHandler(0)
   redisClient.connect()
   
   console.log('room_id:'+_room_id+', mode:'+_mode)
@@ -814,7 +819,7 @@ async function switchMode(_room_id, _mode) {
   if(_mode===code.reset_command){
     toLog(3, 'reset_command')
     let currentMode = await redisClient.hgetValue(roomKey, 'mode')
-    let currentStatus = await redisClient.hgetValue(roomKey, 'status')
+    let currentSecurity = await redisClient.hgetValue(roomKey, 'security')
     try {
       if(currentMode) {
         currentMode = parseInt(currentMode)
@@ -822,25 +827,21 @@ async function switchMode(_room_id, _mode) {
         currentMode = 30
       }
       
-      if(currentStatus) {
-        currentStatus = parseInt(currentStatus)
+      if(currentSecurity) {
+        currentSecurity = parseInt(currentSecurity)
         
       } else {
-        currentStatus = 0
+        currentSecurity = 0
       }
     } catch (error) {
       console.log('error:'+error.message)
     }
     
     try {
-      if(currentMode === 32 && currentStatus === 7) {//Security reset
+      if(currentMode === code.security_mode_command && currentSecurity === code.security_event) {//Security reset
         saveRoom(redisClient,null,{
           roomId:_room_id,
-          sequence: 0,
-          status: 0,
-          prompt: 0,
-          reduce: 0,
-          team_id: 0
+          security: 0
         })
         toLog(4,'Before get security nodes')
         let dList = await dataResources.getSecurityNode(_room_id)
@@ -882,9 +883,29 @@ async function switchMode(_room_id, _mode) {
     } catch (error) {
       console.log('error'+error.message)
     }
-
     
+    redisClient.quit()
+    return
+  }
 
+  if(_mode===code.door_on_notify){
+    try {
+      toLog(3,'befor get default mission')
+      let _missions = await dataResources.getMissions(_room_id, 0)
+      toLog(3,'after get default mission : '+ _missions.length)
+      if(_missions.length == 0) {
+        toLog(4,'Not found default mission')
+      } else {
+        let m = _missions[0]
+        let macAddr = m.macAddr
+        //Send MQTT command to node
+        let receiveTime = new Date().toISOString()
+        let onObj = getMqttObject( macAddr, code.node_on_command, receiveTime, 1)
+        sendMqttMessage(socket, onObj)
+      }
+    } catch (error) {
+      toLog(3,'@@ error:'+error.message)
+    }
     
     redisClient.quit()
     return
@@ -1036,7 +1057,12 @@ function saveRoom(_client,rObj, myJson) {
 
   if(myJson.hasOwnProperty('pass_time')){
     _client.hsetValue(key, 'pass_time', myJson.pass_time)
-    rObj.end = myJson.pass_time
+    rObj.pass_time = myJson.pass_time
+  }
+
+  if(myJson.hasOwnProperty('security')){
+    _client.hsetValue(key, 'security', myJson.security)
+    rObj.security = myJson.security
   }
 
   if(myJson.hasOwnProperty('door_mission')){
@@ -1064,6 +1090,7 @@ function saveRoom(_client,rObj, myJson) {
 
 async function setMissionStop(_req, _res, _status, _message) {
   try {
+    
     let input = checkInput(_req, ['room_id'])
   
     if(input === null) {
@@ -1074,7 +1101,8 @@ async function setMissionStop(_req, _res, _status, _message) {
     let end = new Date().toISOString()
     toLog('s2','@@ end :'+ end)
     //Connect redis
-    let redisClient = new redisHandler(0)
+    const redisHandler  = require('../modules/redisHandler')
+    const redisClient = new redisHandler(0)
     redisClient.connect()
 
     let test = toStopMssion(redisClient, room_id, _status, end)
@@ -1083,7 +1111,7 @@ async function setMissionStop(_req, _res, _status, _message) {
       toLog('s3','@@ Mission not action yet')
       return notAllowed(_res, 'setMissionStop', 'Mission not action yet')
     }
-    
+    redisClient.quit()
     toLog('s4','Response 200')
     resResources.doSuccess(_res, _message)
   } catch (error) {
@@ -1355,65 +1383,90 @@ async function switchMqttCmd(obj) {
     toLog('','@@ get mission room_id: '+ room_id )
   }
   let roomKey = 'room'+room_id
-  let redisClient = new redisHandler(0)
+  let path = roomPath+room_id+'.json'
+  let roomObj = file.getJsonFromFile(path)
+  const redisHandler  = require('../modules/redisHandler')
+  const redisClient = new redisHandler(0)
   redisClient.connect()
   
   let currentMode = await redisClient.hgetValue(roomKey, 'mode')
-  let currentStatus = await redisClient.hgetValue(roomKey, 'status')
+  
   if(currentMode) currentMode = parseInt(currentMode)
-  if(currentStatus) currentStatus = parseInt(currentStatus)
+  
   //Jason add for security mode
   if(currentMode === code.security_mode_command) {
-    if(currentStatus === code.security_reset) {
-      if(command === code.reset_command) {//Security reset
-        toLog(2, 'security_reset')
-        saveRoom(redisClient,null,{
-          roomId:room_id,
-          sequence: 0,
-          status: 0,
-        })
+    let currentSecurity = await redisClient.hgetValue(roomKey, 'security')
+    
+    if(currentSecurity) currentSecurity = parseInt(currentSecurity)
+    
+    if(command === code.reset_command ) {
+      if(currentSecurity === code.security_event) {//Security reset
+        try {
+          toLog(2, 'security_reset')
+          saveRoom(redisClient,roomObj,{
+            roomId:room_id,
+            mode: code.security_mode_command,
+            security: 0,
+          })
+        } catch (error) {
+          toLog('','@@ security_event error:'+error.message)
+        }
+        
+        redisClient.quit()
+        return
       }
     } else if(command === code.security_event) {//7
       //保全觸發
       try {
         toLog(2, 'security_event')
+        const tool  = require('../modules/emaiTool')
         let time = new Date().toISOString()
         //Send socket to web (status = 7)
         let eventObj = getMqttObject( macAddr, code.security_event, time, 1)
         sendSocketCmd(socket, eventObj)
         //Save status to redis an file 
-        saveRoom(redisClient,null,{
+        saveRoom(redisClient,roomObj,{
           roomId:room_id,
-          sequence:0,
-          status:code.security_event,
+          security:code.security_event
         })
+        if(currentSecurity !== code.security_event) {
+          let room = await dataResources.getRoom(room_id)
+          let cpId = room.cp_id
+            
+          let admins = await dataResources.getAdminByCpId(cpId)
+          
+          for(let n=0; n<admins.length; n++) {
+            let email = admins[n]['email']
+            tool.sendMail(email,'警告通知', room.room_name+'保全裝置被觸發')
+          }
+        }
         
+        redisClient.quit()
+        return
       } catch (error) {
-        toLog('','@@ security_event:'+error.message)
+        toLog('','@@ security_event error:'+error.message)
       }
     } 
 
     
-    redisClient.quit()
-    return
   }
   
   if(command === code.door_off_notify) {
     toLog(2, 'door_off_notify')
     
-    let path = roomPath+room_id+'.json'
-    let roomObj = file.getJsonFromFile(path)
     let doorStatus = await redisClient.hgetValue(macAddr, 'door')
+    
     if(doorStatus) doorStatus = parseInt(doorStatus)
     if(doorStatus === code.door_on_notify) {
       //表示大門開啟過,然後上報關閉,表示進入可啟動模式 ,若要開啟輔助照明可於此開啟
       //存到Redis
       redisClient.hsetValue(macAddr, 'door', code.door_off_notify)
-     
+
       saveRoom(redisClient,roomObj,{
         roomId:room_id,
         status:code.door_off_notify
       })
+        
       //收到 MQTT時就存到DB
       
       //Send close status to web
@@ -1436,9 +1489,7 @@ async function switchMqttCmd(obj) {
     let count = await redisClient.hgetValue(roomKey, 'count')
     let status = code.mission_end//2
     count = parseInt(count)
-    
-    let path = roomPath+room_id+'.json'
-    let roomObj = file.getJsonFromFile(path)
+
     let end = new Date().toISOString()
     toLog(3,'mac :'+ macAddr + ', end:'+end)
 
@@ -1468,12 +1519,19 @@ async function switchMqttCmd(obj) {
     
   } else if(command === code.emergency_stop) {
     //緊急按鈕 ,做停止流程
+    const tool  = require('../modules/emaiTool')
     try {
       toLog(2, 'emergency_stop')
       let status = code.emergency_stop
       let end = new Date().toISOString()
+      let room = await dataResources.getRoom(room_id)
+      let admins = await dataResources.getAdminByCpId(room.cp_id)
+      
+      for(let n=0; n<admins.length; n++) {
+        let email = admins[n]['email']
+        tool.sendMail(email,'警告通知', room_+'緊急按鈕被啟動')
+      }
       toStopMssion(redisClient, room_id, status, end)
-      redisClient.quit()
     } catch (error) {
       toLog('','@@ emergency_stop error:'+error.message)
     }
@@ -1607,8 +1665,6 @@ async function toGetDefaultMission(roomId) {
     return null
     //return notFound(res,'getDefaultMission','Not found default mission')
   }
-  let redisClient = new redisHandler(0)
-  redisClient.connect()
 
   let _mission = _missions[0]
   toLog('t2','mission id '+ _mission.id)

@@ -1,9 +1,9 @@
 const Redis = require('redis')
-const Bluebird = require('bluebird')
+
 const Promise = require('bluebird')
 const appConfig = require('../config/app.json')
-Bluebird.promisifyAll(Redis.RedisClient.prototype)
-Bluebird.promisifyAll(Redis.Multi.prototype)
+Promise.promisifyAll(Redis.RedisClient.prototype)
+Promise.promisifyAll(Redis.Multi.prototype)
 let options = {
   "host": 'localhost' ,
   "port": 6379,
