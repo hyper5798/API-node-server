@@ -633,6 +633,12 @@ module.exports = {
           data.prompt = await redisClient.hgetValue(roomKey, 'prompt')
           data.mode = await redisClient.hgetValue(roomKey, 'mode')
           
+          if(data.team_id) {
+            data.team_id = parseInt(data.team_id)
+          } else {
+            data.team_id = roomObj['team_id']
+          }
+          
           if(data.sequence === null || data.status === null || data.prompt === null || data.reduce === null ) {
             data.sequence = roomObj['sequence']
             data.status = roomObj['data.status']
@@ -644,7 +650,8 @@ module.exports = {
               status: data.status,
               sequence: data.sequence,
               prompt:data.prompt,
-              reduce:data.reduce
+              reduce:data.reduce,
+              team_id:data.team_id
             })
           } else {
             data.sequence = parseInt(data.sequence)
@@ -653,19 +660,13 @@ module.exports = {
             data.reduce = parseInt(data.reduce)
           }
           
-          if(data.team_id) {
-            data.team_id = parseInt(data.team_id)
-          } else {
-            data.team_id = roomObj['team_id']
-          }
-          
-          if(data.sequence > 0) {
+          if(data.sequence > 0 && data.sequence <3) {
             pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
             count = await redisClient.hgetValue(roomKey, 'count')
             start = await redisClient.hgetValue(roomKey, 'start')
             count = parseInt(data.count)
             pass_time = parseInt(pass_time)
-          }
+          } 
           if(data.mode === undefined || data.mode === null) {
             data.mode = 30
           } else {
@@ -679,6 +680,16 @@ module.exports = {
           data.reduce = roomObj['reduce']
           data.prompt = roomObj['prompt']
           data.mode = roomObj['mode']
+
+          //Jason add for restore data after redis loss on 2020.10.23
+          saveRoom(redisClient,roomObj,{
+            roomId: room_id,
+            status: data.status,
+            sequence: data.sequence,
+            prompt:data.prompt,
+            reduce:data.reduce,
+            team_id:data.team_id
+          })
 
           if(data.sequence > 0) {
             count = roomObj['count']
