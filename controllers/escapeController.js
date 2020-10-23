@@ -768,6 +768,10 @@ module.exports = {
         if(input === null) {
           return missParam(res, 'setReduce', 'miss param')
         }
+        //Connect redis
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
+        redisClient.connect()
         //let user_id = parseInt(input.user_id)
         let room_id = input.room_id
         let roomKey = 'room'+room_id
@@ -775,10 +779,13 @@ module.exports = {
         let time = input.time
         let path = roomPath+room_id+'.json'
         let roomObj = file.getJsonFromFile(path)
-        //Connect redis
-        const redisHandler  = require('../modules/redisHandler')
-        const redisClient = new redisHandler(0)
-        redisClient.connect()
+        let index = await redisClient.hgetValue(roomKey, 'prompt')
+        if(prompt) prompt = parseInt(prompt)
+        if(index) index = parseInt(index)
+        if(prompt <= index) {
+          return notAllowed(res, 'setReduce','Repeat command')
+        }
+
         let reduce = await redisClient.hgetValue(roomKey, 'reduce')
         toLog(3,'get reduce from redis')
         if(reduce) 
@@ -793,7 +800,7 @@ module.exports = {
         toLog(3,'Save to redis')
         console.log('reduce:'+reduce+', prompt:'+reduce)
         //Save prompt, reducr to redis and file
-        prompt = parseInt(prompt)
+        
         saveRoom(redisClient,roomObj,{
           roomId: room_id,
           reduce: reduce,
