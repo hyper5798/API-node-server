@@ -660,7 +660,7 @@ module.exports = {
             data.reduce = parseInt(data.reduce)
           }
           
-          if(data.sequence > 0 && data.sequence <3) {
+          if(data.sequence > 0) {
             pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
             count = await redisClient.hgetValue(roomKey, 'count')
             start = await redisClient.hgetValue(roomKey, 'start')
@@ -879,7 +879,7 @@ async function switchMode(_room_id, _mode) {
     
     try {
       if(currentMode === code.security_mode_command && currentSecurity === code.security_event) {//Security reset
-        saveRoom(redisClient,null,{
+        saveRoom(redisClient,roomObj,{
           roomId:_room_id,
           security: 0
         })
@@ -895,7 +895,18 @@ async function switchMode(_room_id, _mode) {
           sendMqttMessage(socket, onObj, ((k+1)*interval))
         }
       } else { //System reset
-        setRoomDefault(redisClient, _room_id ,null)
+        //Save default wit mode to redis and file
+        saveRoom(redisClient,roomObj,{
+          roomId:_room_id,
+          mode: code.game_mode_command,
+          sequence: 0,
+          status: 0,
+          reduce: 0,
+          prompt: 0,
+          security: 0,
+          team_id: 0
+        })
+        
         toLog(4,'Before get missions')
         let mList = await dataResources.getMissions(_room_id, null)
         toLog(4,'After get missions :'+mList.length)
@@ -912,7 +923,7 @@ async function switchMode(_room_id, _mode) {
         toLog(5,'Before get security nodes')
         let dList = await dataResources.getSecurityNode(_room_id)
         toLog(5,'After get security nodes :'+dList.length)
-        for(let k=0;k<mList.length;k++) {
+        for(let k=0;k<dList.length;k++) {
           let tmp = dList[k]
           
           //Send MQTT on command to security node
