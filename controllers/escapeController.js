@@ -638,7 +638,14 @@ module.exports = {
             data.status = roomObj['data.status']
             data.prompt = roomObj['data.prompt']
             data.reduce = roomObj['data.reduce']
-            data.reduce = roomObj['data.reduce']
+            //Jason add for restore data after redis loss on 2020.10.23
+            saveRoom(redisClient,roomObj,{
+              roomId: room_id,
+              status: data.status,
+              sequence: data.sequence,
+              prompt:data.prompt,
+              reduce:data.reduce
+            })
           } else {
             data.sequence = parseInt(data.sequence)
             data.status = parseInt(data.status)
@@ -1371,11 +1378,16 @@ async function switchMqttCmd(obj) {
   let macAddr = obj.macAddr
   let command = obj.key1
  
-  toLog(1,'switchMqttCmd -------------------'+command )
-
   if(command) {
     command = parseInt(command)
   }
+
+  if(command === 0) {
+    return
+  }
+
+  toLog(1,'switchMqttCmd -------------------'+command )
+
   if(command === 5) {
     command = parseInt(obj.key2)
     //Send socket to web (status = 2)
