@@ -315,7 +315,7 @@ module.exports = {
           let time = new Date().toISOString()
           let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
           /*** MQTT pass ***/
-          sendMqttMessage(socket, passObj, ((i+1)*interval))
+          sendMqttMessage(socket, passObj, ((i)*interval))
         }
         //Save room to redis and file
         saveRoom(redisClient,roomObj,{
@@ -600,6 +600,10 @@ module.exports = {
           toLog('','@@ miss param')
           return missParam(res, 'getMissionData', 'miss param')
         }
+        //Connect redis
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
+        redisClient.connect()
         //let user_id = parseInt(input.user_id)
         let room_id = parseInt(input.room_id)
         let roomKey = 'room'+room_id
@@ -608,17 +612,15 @@ module.exports = {
         let pass_time = 0
         let count = 0
         let start = null
-        //Connect redis
-        const redisHandler  = require('../modules/redisHandler')
-        const redisClient = new redisHandler(0)
-        redisClient.connect()
+        
+        let status = await redisClient.hgetValue(roomKey, 'status')
         
         let data = {
           mode:30,
           team_id:0,
           countdown:0,
           sequence:0,
-          status: await redisClient.hgetValue(roomKey, 'status'), 
+          status: status, 
           reduce:0, 
           prompt:0
         }
@@ -630,13 +632,24 @@ module.exports = {
           data.reduce = await redisClient.hgetValue(roomKey, 'reduce')
           data.prompt = await redisClient.hgetValue(roomKey, 'prompt')
           data.mode = await redisClient.hgetValue(roomKey, 'mode')
-          if(data.sequence) data.sequence = parseInt(data.sequence)
-          if(data.status) data.status = parseInt(data.status)
-          if(data.prompt) data.prompt = parseInt(data.prompt)
-          if(data.reduce) data.reduce = parseInt(data.reduce)
-
+          
+          if(data.sequence === null || data.status === null || data.prompt === null || data.reduce === null ) {
+            data.sequence = roomObj['sequence']
+            data.status = roomObj['data.status']
+            data.prompt = roomObj['data.prompt']
+            data.reduce = roomObj['data.reduce']
+            data.reduce = roomObj['data.reduce']
+          } else {
+            data.sequence = parseInt(data.sequence)
+            data.status = parseInt(data.status)
+            data.prompt = parseInt(data.prompt)
+            data.reduce = parseInt(data.reduce)
+          }
+          
           if(data.team_id) {
             data.team_id = parseInt(data.team_id)
+          } else {
+            data.team_id = roomObj['team_id']
           }
           
           if(data.sequence > 0) {
@@ -1107,7 +1120,7 @@ async function setMissionStop(_req, _res, _status, _message) {
     const redisClient = new redisHandler(0)
     redisClient.connect()
 
-    let test = toStopMssion(redisClient, room_id, _status, end)
+    let test = await toStopMssion(redisClient, room_id, _status, end)
 
     if(test === null) {//Check sequence
       toLog('s3','@@ Mission not action yet')
@@ -1368,6 +1381,7 @@ async function switchMqttCmd(obj) {
     //Send socket to web (status = 2)
     let time = new Date().toISOString()
     let cmdObj = getMqttObject( macAddr, command, time, 1)
+    //switchMqttCmd for node response
     sendSocketCmd(socket, cmdObj)
     return
   }
@@ -1507,14 +1521,15 @@ async function switchMqttCmd(obj) {
     
     //Save node status 2 to DB
     let cmdObj = getMqttObject( macAddr, code.mission_end, end, 1)
-    toLog(4,'Before save report')
+    //Jason bypass for MQTT sub has save report on 2020.10.23
+    /*toLog(4,'Before save report')
     let result = await dataResources.saveReport(cmdObj)
-    toLog(4,'After save report')
+    toLog(4,'After save report')*/
     //Send socket to web (status = 2)
     sendSocketCmd(socket, cmdObj)
     
-    if(count === sequence) {//最後一關 ,做停止流程
-      toStopMssion(redisClient, room_id, code.mission_pass, end)
+    if(count && count === sequence) {//最後一關 ,做停止流程
+      let test = await toStopMssion(redisClient, room_id, code.mission_pass, end)
     } else {
       redisClient.quit()
     }
@@ -1531,9 +1546,9 @@ async function switchMqttCmd(obj) {
       
       for(let n=0; n<admins.length; n++) {
         let email = admins[n]['email']
-        tool.sendMail(email,'警告通知', room_+'緊急按鈕被啟動')
+        tool.sendMail(email,'警告通知', room.room_name+'緊急按鈕被啟動')
       }
-      toStopMssion(redisClient, room_id, status, end)
+      let test = await toStopMssion(redisClient, room_id, status, end)
     } catch (error) {
       toLog('','@@ emergency_stop error:'+error.message)
     }
