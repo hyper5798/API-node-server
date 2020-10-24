@@ -857,7 +857,7 @@ async function switchMode(_room_id, _mode) {
   
   //Reset command
   if(_mode===code.reset_command){
-    toLog(3, 'reset_command')
+    
     let currentMode = await redisClient.hgetValue(roomKey, 'mode')
     let currentSecurity = await redisClient.hgetValue(roomKey, 'security')
     try {
@@ -878,7 +878,8 @@ async function switchMode(_room_id, _mode) {
     }
     
     try {
-      if(currentMode === code.security_mode_command && currentSecurity === code.security_event) {//Security reset
+      if(currentMode === code.security_mode_command && currentSecurity === code.security_event) {
+        toLog(3, 'Security reset')
         saveRoom(redisClient,roomObj,{
           roomId:_room_id,
           security: 0
@@ -896,6 +897,8 @@ async function switchMode(_room_id, _mode) {
         }
       } else { //System reset
         //Save default wit mode to redis and file
+        toLog(3, 'System reset')
+        let door_mission = await toGetDefaultMission(_room_id)
         saveRoom(redisClient,roomObj,{
           roomId:_room_id,
           mode: code.game_mode_command,
@@ -904,7 +907,9 @@ async function switchMode(_room_id, _mode) {
           reduce: 0,
           prompt: 0,
           security: 0,
-          team_id: 0
+          team_id: 0,
+          door_mission: door_mission,
+          start: ''
         })
         
         toLog(4,'Before get missions')
@@ -1734,6 +1739,7 @@ async function toGetDefaultMission(roomId) {
   }
   toLog('t3','get default scripts '+ _scripts.length)
   let _inx = getRandom(_scripts.length)
+  toLog('t4','get default index '+ _inx)
   let _script = _scripts[_inx]
   let m = JSON.parse(JSON.stringify(_mission))
   /*if(typeof _script.pass === 'string') {
