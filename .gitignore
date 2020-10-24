@@ -10,6 +10,6 @@ doc
 
 # Optional npm cache directory
 .npm
-#.vscode
+.vscode
 .nodered
 
