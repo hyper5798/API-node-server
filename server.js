@@ -71,7 +71,7 @@ const setting = {
 
 
 module.exports = async function createServer () {
-  init()
+  //init()
   const app = express()
   let mqttClient = new mqttHandler();
   mqttClient.connect();

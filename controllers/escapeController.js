@@ -641,17 +641,28 @@ module.exports = {
           
           if(data.sequence === null || data.status === null || data.prompt === null || data.reduce === null ) {
             data.sequence = roomObj['sequence']
-            data.status = roomObj['data.status']
-            data.prompt = roomObj['data.prompt']
-            data.reduce = roomObj['data.reduce']
+            data.status = roomObj['status']
+            data.team_id  = roomObj['team_id']
+            data.reduce = roomObj['reduce']
+            data.prompt = roomObj['prompt']
+            data.mode = roomObj['mode']
+            pass_time = roomObj['pass_time']
             //Jason add for restore data after redis loss on 2020.10.23
+            if(data.sequence > 0) {
+              count = roomObj['count']
+              start = roomObj['start']
+            }
             saveRoom(redisClient,roomObj,{
               roomId: room_id,
               status: data.status,
               sequence: data.sequence,
               prompt:data.prompt,
               reduce:data.reduce,
-              team_id:data.team_id
+              team_id:data.team_id,
+              pass_time: pass_time,
+              mode:data.mode,
+              count: count,
+              start: start,
             })
           } else {
             data.sequence = parseInt(data.sequence)
@@ -664,7 +675,7 @@ module.exports = {
             pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
             count = await redisClient.hgetValue(roomKey, 'count')
             start = await redisClient.hgetValue(roomKey, 'start')
-            count = parseInt(data.count)
+            count = parseInt(count)
             pass_time = parseInt(pass_time)
           } 
           if(data.mode === undefined || data.mode === null) {
@@ -680,31 +691,36 @@ module.exports = {
           data.reduce = roomObj['reduce']
           data.prompt = roomObj['prompt']
           data.mode = roomObj['mode']
+          pass_time = roomObj['pass_time']
 
           //Jason add for restore data after redis loss on 2020.10.23
+          if(data.sequence > 0) {
+            count = roomObj['count']
+            start = roomObj['start']
+          }
+          
+            
+          if(data.mode === undefined || data.mode === null) {
+            data.mode = 30
+          }
           saveRoom(redisClient,roomObj,{
             roomId: room_id,
             status: data.status,
             sequence: data.sequence,
             prompt:data.prompt,
             reduce:data.reduce,
-            team_id:data.team_id
-          })
+            team_id:data.team_id,
+            pass_time: pass_time,
+            mode:data.mode,
+            count: count,
+            start: start,
 
-          if(data.sequence > 0) {
-            count = roomObj['count']
-            start = roomObj['start']
-          }
-          if(roomObj['room']) {
-            pass_time  = roomObj['room']['pass_time']
-          }
-            
-          if(data.mode === undefined || data.mode === null) {
-            data.mode = 30
-          }
+          })
         }
 
         console.log('sequence:'+data.sequence+ ', status:'+data.status)
+        console.log('pass_time:'+pass_time+ ', status:'+data.status)
+
 
         if(data.status === undefined || data.status === null){
             //Get status is null to reset to default
@@ -715,11 +731,14 @@ module.exports = {
             let diff = getDiff(start, now)
             //toLog('','@@ get diff :'+diff)
             //Jason add for reduce on 2020.10.08
+            if(typeof data.reduce === 'string') data.reduce = parseInt(data.reduce)
+            if(typeof pass_time === 'string') data.reduce = parseInt(pass_time)
+
             data.countdown = pass_time - diff - data.reduce
 
             if(data.countdown < 0) {
               data.countdown = 0
-            } else if (data.sequence === data.count && data.status === 2 && data.countdown > 0) {
+            } /*else if (data.sequence === data.count && data.status === 2 && data.countdown > 0) {
               // To verify last sequence then do pass flow after mqtt end 
               data.status = code.mission_pass //3
               data.countdown = 0
@@ -727,7 +746,7 @@ module.exports = {
                 roomId: room_id,
                 status: data.status
               })
-            }
+            }*/
             toLog('', '@@ get countdown :'+data.countdown)
         }
         

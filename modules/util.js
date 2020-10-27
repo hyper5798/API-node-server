@@ -14,7 +14,7 @@ async function init() {
   const Type = require('../db/models').type
   const Product = require('../db/models').product
 
-  let clean = await redisClient.flush()
+  //let clean = await redisClient.flush()
   console.log('init clean redis: '+ clean)
   
   let types = await Promise.resolve(Type.findAll())
