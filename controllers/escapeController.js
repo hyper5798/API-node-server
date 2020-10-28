@@ -103,6 +103,7 @@ module.exports = {
           const redisHandler  = require('../modules/redisHandler')
           const redisClient = new redisHandler(0)
           redisClient.connect()
+          let team_id = await redisClient.hgetValue(roomKey, 'team_id')
           if(team_id) {
             team_id = parseInt(team_id)
             if(team_id > 0) {
@@ -191,7 +192,7 @@ module.exports = {
       try {
         //Jason test bypass
         //let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
-        let team_id = await redisClient.hgetValue(roomKey, 'team_id')
+        
         
         let status = await redisClient.hgetValue(roomKey, 'status')
         if(status === code.security_event) {
