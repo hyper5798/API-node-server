@@ -96,12 +96,20 @@ module.exports = {
         
 
         if(macAddr === 'default') {
+          toLog('','## command: default')
           let roomKey = 'room'+room_id
           let path = roomPath+room_id+'.json'
           let roomObj = file.getJsonFromFile(path)
           const redisHandler  = require('../modules/redisHandler')
           const redisClient = new redisHandler(0)
           redisClient.connect()
+          if(team_id) {
+            team_id = parseInt(team_id)
+            if(team_id > 0) {
+              return notAllowed(res, 'sendMqttCmd default', 'Door has be opened by the other team')
+            }
+          }
+          
           let user_id = req.body.user_id || req.query.user_id
           if(user_id === undefined || user_id === null) {
             return missParam(res, 'sendMqttCmd', 'miss param user_id')
@@ -183,6 +191,8 @@ module.exports = {
       try {
         //Jason test bypass
         //let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
+        let team_id = await redisClient.hgetValue(roomKey, 'team_id')
+        
         let status = await redisClient.hgetValue(roomKey, 'status')
         if(status === code.security_event) {
           notAllowed(res, 'setMissionAction', 'Security event')
