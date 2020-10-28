@@ -15,6 +15,7 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       room_id: {
+        allowNull: true,
         type: Sequelize.INTEGER
       },
       created_at: {
