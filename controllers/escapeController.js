@@ -42,7 +42,10 @@ socket.on('update_mqtt_ul',function(data){
 
 socket.on('change_mode',function(data){
   console.log('escapeController change_mode :'+ data.mode);
-  switchMode(data.room_id, data.mode)
+  if(data.token === undefined || data.token === null) {
+    return
+  }
+  switchMode(data.room_id, data.mode, data.token)
 });
 
 module.exports = {
@@ -861,7 +864,7 @@ module.exports = {
           return missParam(res, 'setMode', 'miss param')
         }
         let room_id = input.room_id
-        switchMode(room_id, mode)
+        switchMode(room_id, mode, null )
         toLog('','@@ response 200 ')
         resResources.doSuccess(res, 'Set mode mode '+mode+' ok')
       } catch (error) {
@@ -872,8 +875,21 @@ module.exports = {
     }
 }
 
-async function switchMode(_room_id, _mode) {
+async function switchMode(_room_id, _mode, _token) {
   //Connect redis
+  if(_token) {
+    //From soket need check token
+    const authResources = require('../lib/authResources')
+    
+    let result = await authResources.tokenVerify(_token)
+    if(result === null) {
+      return
+    } else if(result === 'expired') {
+      socket.emit('token_expire', {token: _token})
+      return
+    }
+  }
+  
   const redisHandler  = require('../modules/redisHandler')
   const redisClient = new redisHandler(0)
   redisClient.connect()

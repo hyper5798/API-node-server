@@ -13,7 +13,7 @@ const http = require('http')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
-const debug = true
+const debug = true;
 global.debug = debug
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
@@ -234,8 +234,13 @@ module.exports = async function createServer () {
 
 
     socket.on('reply_command_status', function (data) {
-      console.log('reply_command_status' + JSON.stringify(data)) 
+      console.log('reply_command_status:' + JSON.stringify(data)) 
       socket.broadcast.emit('update_command_status', data)
+    });
+
+    socket.on('token_expire', function (data) {
+      console.log('token_expire:' + JSON.stringify(data)) 
+      socket.broadcast.emit('token_expire', data)
     });
 
     socket.on('MQTT_YESIO_UL', function (data) {
