@@ -660,24 +660,31 @@ module.exports = {
             data.reduce = roomObj['reduce']
             data.prompt = roomObj['prompt']
             data.mode = roomObj['mode']
-            pass_time = roomObj['pass_time']
+            
             //Jason add for restore data after redis loss on 2020.10.23
-            if(data.sequence > 0) {
+            if(data.sequence === 1 || data.sequence === 2) {
               count = roomObj['count']
               start = roomObj['start']
+              pass_time = roomObj['pass_time']
             }
-            saveRoom(redisClient,roomObj,{
+            //Jason fix set invalid argument to redis include pass-time and start on 2020.11.8
+            let obj = {
               roomId: room_id,
               status: data.status,
               sequence: data.sequence,
               prompt:data.prompt,
               reduce:data.reduce,
               team_id:data.team_id,
-              pass_time: pass_time,
               mode:data.mode,
               count: count,
-              start: start,
-            })
+            }
+            if(pass_time && pass_time !== '0' && pass_time !== 0) {
+              obj.pass_time = pass_time;
+            }
+            if(start && start !== '') {
+              obj.start = start;
+            }
+            saveRoom(redisClient,roomObj,obj)
           } else {
             data.sequence = parseInt(data.sequence)
             data.status = parseInt(data.status)
@@ -685,7 +692,7 @@ module.exports = {
             data.reduce = parseInt(data.reduce)
           }
           
-          if(data.sequence > 0) {
+          if(data.sequence === 1 || data.sequence === 2) {
             pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
             count = await redisClient.hgetValue(roomKey, 'count')
             start = await redisClient.hgetValue(roomKey, 'start')
@@ -705,31 +712,37 @@ module.exports = {
           data.reduce = roomObj['reduce']
           data.prompt = roomObj['prompt']
           data.mode = roomObj['mode']
-          pass_time = roomObj['pass_time']
+          
 
           //Jason add for restore data after redis loss on 2020.10.23
-          if(data.sequence > 0) {
+          if(data.sequence === 1 || data.sequence === 2) {
             count = roomObj['count']
             start = roomObj['start']
+            pass_time = roomObj['pass_time']
           }
           
             
           if(data.mode === undefined || data.mode === null) {
             data.mode = 30
           }
-          saveRoom(redisClient,roomObj,{
+          //Jason fix set invalid argument to redis include pass-time and start on 2020.11.8
+          let obj = {
             roomId: room_id,
             status: data.status,
             sequence: data.sequence,
             prompt:data.prompt,
             reduce:data.reduce,
             team_id:data.team_id,
-            pass_time: pass_time,
             mode:data.mode,
             count: count,
-            start: start,
-
-          })
+          }
+          if(pass_time && pass_time !== '0' && pass_time !== 0) {
+            obj.pass_time = pass_time;
+          }
+          if(start && start !== '') {
+            obj.start = start;
+          }
+          saveRoom(redisClient,roomObj,obj)
         }
 
         console.log('sequence:'+data.sequence+ ', status:'+data.status)
