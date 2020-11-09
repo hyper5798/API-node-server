@@ -245,5 +245,23 @@ module.exports = {
     } catch (e) {
       resResources.catchError(res, e.message)
     }
+  },
+
+  async checkToken(req, res, next) {
+    try {
+      let token = req.body.token || req.query.token
+      let result = await authResources.tokenVerify(token)
+      if(result === null) {
+        return resResources.authFail(res)
+      } else if(result === 'expired') {
+        console.log('token expired')
+        return resResources.authFail(res)
+      }
+      console.log('checkToken result:');
+      console.log(result);
+      resResources.getDtaSuccess(res, result)
+    } catch (e) {
+      resResources.catchError(res, e.message)
+    }
   }
 }

@@ -119,6 +119,7 @@ module.exports = async function createServer () {
    */
   app.post('/users/login', userController.login)
   app.post('/users/register', userController.register)
+  app.post('/users/checkToken', userController.checkToken)
 
   //If isTest is false to check token
   if(!isTest) {
