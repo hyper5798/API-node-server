@@ -141,7 +141,7 @@ module.exports = {
             status = code.door_off_notify//10
           }
           
-          redisClient.hsetValue(macAddr,'door', status)
+          //redisClient.hsetValue(macAddr,'door', status)
           redisClient.hsetValue(macAddr,'room_id',room_id)
           
           saveRoom(redisClient,roomObj,{
@@ -1575,13 +1575,13 @@ async function switchMqttCmd(obj) {
   if(command === code.door_off_notify) {
     toLog(2, 'door_off_notify')
     
-    let doorStatus = await redisClient.hgetValue(macAddr, 'door')
+    let doorStatus = await redisClient.hgetValue(roomKey, 'status')
     
     if(doorStatus) doorStatus = parseInt(doorStatus)
     if(doorStatus === code.door_on_notify) {
       //表示大門開啟過,然後上報關閉,表示進入可啟動模式 ,若要開啟輔助照明可於此開啟
       //存到Redis
-      redisClient.hsetValue(macAddr, 'door', code.door_off_notify)
+      //redisClient.hsetValue(macAddr, 'door', code.door_off_notify)
 
       saveRoom(redisClient,roomObj,{
         roomId:room_id,
@@ -1595,13 +1595,15 @@ async function switchMqttCmd(obj) {
       let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
       sendSocketCmd(socket, closeObj)
       toLog(3, 'save door status door_off_notify :' + code.door_off_notify)
-    } else {
+    } else if(doorStatus === code.emergency_stop || doorStatus === code.mission_pass || doorStatus === code.mission_fail){
       //Send close status to web
       let time = new Date().toISOString()
       let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
       sendSocketCmd(socket, closeObj)
       setRoomDefault(redisClient, room_id ,macAddr)
       toLog(3, 'Reset status to default')
+    } else {
+      toLog(3, 'Bypass repeatedly closed')
     }
     redisClient.quit()
   } else if(command === code.mission_end) {//2 mission end
@@ -1645,14 +1647,25 @@ async function switchMqttCmd(obj) {
     try {
       toLog(2, 'emergency_stop')
       let status = code.emergency_stop
-      let end = new Date().toISOString()
+      //Jason add for emergency stop without action on 2020.11.9
       let room = await dataResources.getRoom(room_id)
       let admins = await dataResources.getAdminByCpId(room.cp_id)
-      
+      //Email to administrator first
       for(let n=0; n<admins.length; n++) {
         let email = admins[n]['email']
         tool.sendMail(email,'警告通知', room.room_name+'緊急按鈕被啟動')
       }
+      //Second check is action or not?
+      let currentStatus = await redisClient.hgetValue(roomKey, 'status')
+      if(currentStatus) {
+        currentStatus = parseInt(currentStatus)
+        //Not action only change status
+        if(currentStatus !=1 && currentStatus!=2) {
+          saveRoom(redisClient,roomObj,{roomId: room_id,status:status})
+          return
+        }
+      }
+      let end = new Date().toISOString()
       let test = await toStopMssion(redisClient, room_id, status, end)
     } catch (error) {
       toLog('','@@ emergency_stop error:'+error.message)
