@@ -99,7 +99,7 @@ module.exports = {
         
 
         if(macAddr === 'default') {
-          toLog('','## command: default')
+          toLog('2','command: default')
           let roomKey = 'room'+room_id
           let path = roomPath+room_id+'.json'
           let roomObj = file.getJsonFromFile(path)
@@ -107,15 +107,18 @@ module.exports = {
           const redisClient = new redisHandler(0)
           redisClient.connect()
           let team_id = await redisClient.hgetValue(roomKey, 'team_id')
-          if(team_id) {
+          if(team_id != null) {
             team_id = parseInt(team_id)
             if(team_id > 0) {
+              toLog('3','Door has be opened by the other team')
+              redisClient.quit()
               return notAllowed(res, 'sendMqttCmd default', 'Door has be opened by the other team')
             }
           }
           
           let user_id = req.body.user_id || req.query.user_id
           if(user_id === undefined || user_id === null) {
+            redisClient.quit()
             return missParam(res, 'sendMqttCmd', 'miss param user_id')
           }
           toLog(2,'befor get teamMember')
@@ -126,6 +129,7 @@ module.exports = {
           let _missions = await dataResources.getMissions(room_id, 0)
           toLog(3,'after get default mission : '+ _missions.length)
           if(_missions.length == 0) {
+            redisClient.quit()
             return notFound(res, 'sendMqttCmd','Not found default mission' )
           }
           let m = _missions[0]
@@ -433,10 +437,12 @@ module.exports = {
 
         if(currentSequence === null) {//Check status for
           toLog('','@@ from file null')
+          redisClient.quit()
           return notAllowed(res, 'setMissionStart', 'Mission not action yet')
         }
         if(currentSequence !== (sequence-1) || sequence > count) {
           toLog('','@@ Not allowed sequence:'+sequence)
+          redisClient.quit()
           return notAllowed(res, 'setMissionStart', 'Not allowed sequence')
         }
         let mac = macs[(currentSequence-1)]
@@ -445,6 +451,7 @@ module.exports = {
         toLog(4,'mac1 end :'+ end)
         if(end === null) {
           toLog('','@@ Not complete previous mission')
+          redisClient.quit()
           return notAllowed(res, 'setMissionStart', 'Not complete previous mission')
         }
         let mac2 = macs[(currentSequence)]
@@ -453,6 +460,7 @@ module.exports = {
         toLog(6,'mac2 start:'+ start)
         if(start !== null && start !== '') {
           toLog('','@@ Repeat command')
+          redisClient.quit()
           return notAllowed(res, 'setMissionStart', 'Repeat command')
         }
         toLog(7,'judge end')
@@ -829,6 +837,7 @@ module.exports = {
         if(prompt) prompt = parseInt(prompt)
         if(index) index = parseInt(index)
         if(prompt <= index) {
+          redisClient.quit()
           return notAllowed(res, 'setReduce','Repeat command')
         }
 
@@ -862,6 +871,7 @@ module.exports = {
         toLog(5,'@@ response 200 ')
         resResources.doSuccess(res, 'Set reduce ok')
       } catch (error) {
+        redisClient.quit()
         toLog(5,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
@@ -1230,6 +1240,7 @@ async function setMissionStop(_req, _res, _status, _message) {
     toLog('s4','Response 200')
     resResources.doSuccess(_res, _message)
   } catch (error) {
+    redisClient.quit()
     toLog('s4','@@ response 500 :'+error.message)
     resResources.catchError(_res, error.message)
   }
@@ -1554,7 +1565,7 @@ async function switchMqttCmd(obj) {
           let room = await dataResources.getRoom(room_id)
           let cpId = room.cp_id
             
-          let admins = await dataResources.getAdminByCpId(cpId)
+          let admins = await dataResources.getAdmins()
           
           for(let n=0; n<admins.length; n++) {
             let email = admins[n]['email']
@@ -1603,7 +1614,14 @@ async function switchMqttCmd(obj) {
       setRoomDefault(redisClient, room_id ,macAddr)
       toLog(3, 'Reset status to default')
     } else {
-      toLog(3, 'Bypass repeatedly closed')
+      toLog(3, 'Just show door closed')
+      let time = new Date().toISOString()
+      let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
+      sendSocketCmd(socket, closeObj)
+      saveRoom(redisClient,roomObj,{
+        roomId:room_id,
+        status:code.door_off_notify
+      })
     }
     redisClient.quit()
   } else if(command === code.mission_end) {//2 mission end
@@ -1649,7 +1667,7 @@ async function switchMqttCmd(obj) {
       let status = code.emergency_stop
       //Jason add for emergency stop without action on 2020.11.9
       let room = await dataResources.getRoom(room_id)
-      let admins = await dataResources.getAdminByCpId(room.cp_id)
+      let admins = await dataResources.getAdmins()
       //Email to administrator first
       for(let n=0; n<admins.length; n++) {
         let email = admins[n]['email']
@@ -1662,12 +1680,15 @@ async function switchMqttCmd(obj) {
         //Not action only change status
         if(currentStatus !=1 && currentStatus!=2) {
           saveRoom(redisClient,roomObj,{roomId: room_id,status:status})
+          redisClient.quit()
           return
         }
       }
       let end = new Date().toISOString()
       let test = await toStopMssion(redisClient, room_id, status, end)
+      
     } catch (error) {
+      redisClient.quit()
       toLog('','@@ emergency_stop error:'+error.message)
     }
   }
