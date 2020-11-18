@@ -49,7 +49,20 @@ class redisHandler {
     key = appConfig.laravel_prifix+key
     /*let result = this.redisClient.hsetAsync(key, field, value)
     return Promise.resolve(result)*/
-    return Promise.resolve(this.redisClient.hsetAsync(key, field, value))
+    //return Promise.resolve(this.redisClient.hsetAsync(key, field, value))
+    return new Promise((resolve,reject)=>{
+      this.redisClient.hset(key, field, value, function(error, res){
+        if (error) {
+          console.log("hsetValue error : ");
+          console.log(error);
+          resolve(false) // or use rejcet(false) but then you will have to handle errors
+        } 
+        else {
+          //console.log('hsetValue ok'+ key + ' : ' + field);
+          resolve(true)
+        }
+      })
+    })
   }
 
   hgetValue(key,field) {
@@ -57,12 +70,76 @@ class redisHandler {
     /*let value = this.redisClient.hgetAsync(key, field)
     //console.log('hgetValue :' + value);
     return Promise.resolve(value)*/
-    return Promise.resolve(this.redisClient.hgetAsync(key, field))
+    //return Promise.resolve(this.redisClient.hgetAsync(key, field))
+    return new Promise((resolve,reject)=>{
+      this.redisClient.hget(key, field, function(error, res){
+        if (error) {
+          console.log("hgetValue error : ");
+          console.log(error);
+          resolve(null) // or use rejcet(false) but then you will have to handle errors
+        } 
+        else {
+          //console.log('hgetValue ok'+ key + ' : ' + field);
+          resolve(res)
+        }
+      })
+    })
+  }
+
+  hgetall(key) {
+    key = appConfig.laravel_prifix+key
+  
+    return new Promise((resolve,reject)=>{
+      this.redisClient.hgetall(key, function(error, res){
+        if (error) {
+          console.log("hgetValue error : ");
+          console.log(error);
+          resolve(null) // or use rejcet(false) but then you will have to handle errors
+        } 
+        else {
+          //console.log('hgetValue ok'+ key + ' : ' + field);
+          resolve(res)
+        }
+      })
+    })
+  }
+
+  hdel(key, field) {
+    let mkey = appConfig.laravel_prifix+key
+    //let result = this.redisClient.del(key)
+    //return Promise.resolve(result)
+    return new Promise((resolve,reject)=>{
+      this.redisClient.hdel(mkey, field, function(error, res){
+        if (error) {
+          console.log("del key error : ");
+          console.log(error);
+          resolve(null) // or use rejcet(false) but then you will have to handle errors
+        } 
+        else {
+          //console.log('del key  ok');
+          resolve(res)
+        }
+      })
+    })
   }
 
   remove(key) {
-    let result = this.redisClient.del(key)
-    return Promise.resolve(result)
+    let mkey = appConfig.laravel_prifix+key
+    //let result = this.redisClient.del(key)
+    //return Promise.resolve(result)
+    return new Promise((resolve,reject)=>{
+      this.redisClient.del(mkey, function(error, res){
+        if (error) {
+          console.log("del key error : ");
+          console.log(error);
+          resolve(null) // or use rejcet(false) but then you will have to handle errors
+        } 
+        else {
+          //console.log('del key  ok');
+          resolve(res)
+        }
+      })
+    })
   }
 
   flush() {
