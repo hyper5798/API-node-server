@@ -136,6 +136,7 @@ module.exports = {
           let m = _missions[0]
           macAddr = m.macAddr
           if(macAddr === undefined || macAddr === null) {
+            redisClient.quit()
             return notFound(res, 'sendMqttCmd','Not found default device' )
           }
           //Record door status
@@ -204,6 +205,7 @@ module.exports = {
         
         let status = await redisClient.hgetValue(roomKey, 'status')
         if(status === code.security_event) {
+          redisClient.quit()
           notAllowed(res, 'setMissionAction', 'Security event')
         }
         let doorMac = await redisClient.hgetValue(roomKey, 'doorMac')
@@ -246,6 +248,7 @@ module.exports = {
 		    console.log(obj.members)
         if(obj === null) {
           toLog('','@@ Not join team')
+          redisClient.quit()
           return notAllowed(res, 'setMissionAction','Not join team')
         }
         // let teamId = obj.team_id
@@ -257,6 +260,7 @@ module.exports = {
         toLog(3,'After get room')
 		    console.log(room)
         if(room === null ) {
+          redisClient.quit()
           return notFound(res, 'setMissionAction', 'Not found room')
         }
         //Get missions
@@ -265,6 +269,7 @@ module.exports = {
 		    toLog(4,'After get mission :'+mList.length)
         
         if(mList === null || mList.length === 0 ) {
+          redisClient.quit()
           return notFound(res, 'setMissionAction', 'Not found mission '+ mList.length)
         }
 
@@ -272,6 +277,7 @@ module.exports = {
         let scriptGroup = await dataResources.getGroupScript(room_id)
         toLog(6, 'After get getGroupScript '+Object.keys(scriptGroup).length)
         if(Object.keys(scriptGroup).length === 0 ) {
+          redisClient.quit()
           return notFound(res, 'setMissionAction','Not found script')
         }
         
@@ -548,10 +554,12 @@ module.exports = {
 
         if(currentSequence === null) {//Check status for
           toLog('','@@ from file null')
+          redisClient.quit()
           return notAllowed(res, 'setMissionEnd', 'Mission not action yet')
         }
         if(currentSequence !== sequence || sequence > count) {
           toLog('','@@ Not allowed sequence :'+ sequence)
+          redisClient.quit()
           return notAllowed(res, 'setMissionEnd', 'Not allowed sequence')
         }
         let mac = macs[(sequence-1)]
@@ -560,12 +568,14 @@ module.exports = {
         toLog(4,'start :'+ start)
         if(start === null || start === '') {
           toLog('','@@ Not start mission')
+          redisClient.quit()
           return notAllowed(res, 'setMissionEnd', 'Not start mission')
         }
         let end = await redisClient.hgetValue(mac, 'end')
         toLog(5,'end :'+ end)
         if(end !== null && end !== '') {
           toLog('','@@ Repeat command')
+          redisClient.quit()
           return notAllowed(res, 'setMissionEnd', 'Repeat command')
         }
         let endTime = new Date().toISOString()
