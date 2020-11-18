@@ -106,6 +106,7 @@ module.exports = {
           const redisHandler  = require('../modules/redisHandler')
           const redisClient = new redisHandler(0)
           redisClient.connect()
+          
           let team_id = await redisClient.hgetValue(roomKey, 'team_id')
           if(team_id != null) {
             team_id = parseInt(team_id)
@@ -276,6 +277,8 @@ module.exports = {
         
         let defaultIndex = -1
         for(let i=0;i<mList.length;i++) {
+          //Jason add for clear mac in redis on 2020.11.18
+          redisClient.remove(mList[i])
           if(mList[i].sequence ===0){
             defaultIndex = i
             break
@@ -629,97 +632,64 @@ module.exports = {
         //let user_id = parseInt(input.user_id)
         let room_id = parseInt(input.room_id)
         let roomKey = 'room'+room_id
-        let path = roomPath+room_id+'.json'
-        let roomObj = file.getJsonFromFile(path)
         let pass_time = 0
         let count = 0
         let start = null
-        
-        let status = await redisClient.hgetValue(roomKey, 'status')
-        
         let data = {
-          mode:30,
-          team_id:0,
-          countdown:0,
-          sequence:0,
-          status: status, 
-          reduce:0, 
-          prompt:0
+          status: 0,
+          sequence: 0,
+          team_id: 0,
+          mode: 30,
+          prompt: 0,
+          reduce: 0
         }
         
-        if(data.status !== null) {//Check redis value
+        let all = await redisClient.hgetall(roomKey)
+        
+        if(all !== null) {//Check redis value
           toLog(2,'get room data from redis')
-          data.sequence = await redisClient.hgetValue(roomKey, 'sequence')
-          data.team_id = await redisClient.hgetValue(roomKey, 'team_id')
-          data.reduce = await redisClient.hgetValue(roomKey, 'reduce')
-          data.prompt = await redisClient.hgetValue(roomKey, 'prompt')
-          data.mode = await redisClient.hgetValue(roomKey, 'mode')
+          if(all.status)
+            data.status = parseInt(all.status)
+
+          if(all.sequence)
+            data.sequence = parseInt(all.sequence)
+
+          if(all.team_id)
+            data.team_id = parseInt(all.team_id)
+
+          if(all.reduce)
+            data.reduce = parseInt(all.reduce)
+
+          if(all.prompt)
+            data.prompt = parseInt(all.prompt)
+
+          if(all.mode)
+            data.mode = parseInt(all.mode)
           
-          if(data.team_id) {
-            data.team_id = parseInt(data.team_id)
-          } else {
-            data.team_id = roomObj['team_id']
+          if(data.sequence == 1 || data.sequence == 2) {
+            pass_time = parseInt(all.pass_time)
+            start = all.start
           }
+
+        } else {
+          toLog(2,'get room data from file')
+          let path = roomPath+room_id+'.json'
+          let roomObj = file.getJsonFromFile(path)
+
+          data.status = roomObj['status']
           
-          if(data.sequence === null || data.status === null || data.prompt === null || data.reduce === null ) {
+          
+          if(data.status === undefined || data.status === null){
+            //Get status is null to reset to default
+            data.status = 0
+            setRoomDefault(redisClient, room_id ,null)
+          } else {
             data.sequence = roomObj['sequence']
-            data.status = roomObj['status']
             data.team_id  = roomObj['team_id']
             data.reduce = roomObj['reduce']
             data.prompt = roomObj['prompt']
             data.mode = roomObj['mode']
-            
-            //Jason add for restore data after redis loss on 2020.10.23
-            if(data.sequence === 1 || data.sequence === 2) {
-              count = roomObj['count']
-              start = roomObj['start']
-              pass_time = roomObj['pass_time']
-            }
-            //Jason fix set invalid argument to redis include pass-time and start on 2020.11.8
-            let obj = {
-              roomId: room_id,
-              status: data.status,
-              sequence: data.sequence,
-              prompt:data.prompt,
-              reduce:data.reduce,
-              team_id:data.team_id,
-              mode:data.mode,
-              count: count,
-            }
-            if(pass_time && pass_time !== '0' && pass_time !== 0) {
-              obj.pass_time = pass_time;
-            }
-            if(start && start !== '') {
-              obj.start = start;
-            }
-            saveRoom(redisClient,roomObj,obj)
-          } else {
-            data.sequence = parseInt(data.sequence)
-            data.status = parseInt(data.status)
-            data.prompt = parseInt(data.prompt)
-            data.reduce = parseInt(data.reduce)
           }
-          
-          if(data.sequence === 1 || data.sequence === 2) {
-            pass_time = await redisClient.hgetValue(roomKey, 'pass_time')
-            count = await redisClient.hgetValue(roomKey, 'count')
-            start = await redisClient.hgetValue(roomKey, 'start')
-            count = parseInt(count)
-            pass_time = parseInt(pass_time)
-          } 
-          if(data.mode === undefined || data.mode === null) {
-            data.mode = 30
-          } else {
-            data.mode = parseInt(data.mode)
-          }
-        } else if(roomObj.hasOwnProperty('sequence')){
-          toLog(2,'get room data from file')
-          data.sequence = roomObj['sequence']
-          data.status = roomObj['status']
-          data.team_id  = roomObj['team_id']
-          data.reduce = roomObj['reduce']
-          data.prompt = roomObj['prompt']
-          data.mode = roomObj['mode']
           
 
           //Jason add for restore data after redis loss on 2020.10.23
@@ -733,7 +703,7 @@ module.exports = {
           if(data.mode === undefined || data.mode === null) {
             data.mode = 30
           }
-          //Jason fix set invalid argument to redis include pass-time and start on 2020.11.8
+          //Restore data from file to redis
           let obj = {
             roomId: room_id,
             status: data.status,
@@ -742,26 +712,41 @@ module.exports = {
             reduce:data.reduce,
             team_id:data.team_id,
             mode:data.mode,
-            count: count,
+            count: count
           }
-          if(pass_time && pass_time !== '0' && pass_time !== 0) {
-            obj.pass_time = pass_time;
+
+          if(roomObj.hasOwnProperty('end')) {
+            obj.end = roomObj['end'];
           }
-          if(start && start !== '') {
-            obj.start = start;
+
+          if(roomObj.hasOwnProperty('start')) {
+            obj.pass_time = roomObj['start'];
           }
+
+          if(roomObj.hasOwnProperty('pass_time')) {
+            obj.pass_time = roomObj['pass_time'];
+          }
+
+          if(roomObj.hasOwnProperty('missions')) {
+            obj.missions = roomObj['missions'];
+          }
+
+          if(roomObj.hasOwnProperty('door_mission')) {
+            obj.door_mission = roomObj['door_mission'];
+          }
+
+          if(roomObj.hasOwnProperty('members')) {
+            obj.members = roomObj['members'];
+          }
+
+          if(roomObj.hasOwnProperty('macs')) {
+            obj.macs = roomObj['macs'];
+          }
+
           saveRoom(redisClient,roomObj,obj)
         }
-
-        console.log('sequence:'+data.sequence+ ', status:'+data.status)
-        console.log('pass_time:'+pass_time+ ', status:'+data.status)
-
-
-        if(data.status === undefined || data.status === null){
-            //Get status is null to reset to default
-            data.status = 0
-            setRoomDefault(redisClient, room_id ,null)
-        } else if(data.status === 1 || data.status === 2) {//During in pass mission
+        
+        if(data.status === 1 || data.status === 2) {//During in pass mission
             let now = new Date().toISOString()
             let diff = getDiff(start, now)
             //toLog('','@@ get diff :'+diff)
@@ -773,22 +758,17 @@ module.exports = {
 
             if(data.countdown < 0) {
               data.countdown = 0
-            } /*else if (data.sequence === data.count && data.status === 2 && data.countdown > 0) {
-              // To verify last sequence then do pass flow after mqtt end 
-              data.status = code.mission_pass //3
-              data.countdown = 0
-              saveRoom(redisClient,roomObj,{
-                roomId: room_id,
-                status: data.status
-              })
-            }*/
-            toLog('', '@@ get countdown :'+data.countdown)
+            }
+            //toLog('', '@@ get countdown :'+data.countdown)
         }
+        
+        console.log('get status:')
+        console.log(data)
         
         redisClient.quit()
         
         toLog(3,'response 200')
-         return resResources.getDtaSuccess(res, data)
+        return resResources.getDtaSuccess(res, data)
       } catch (error) {
         toLog(5,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
@@ -871,7 +851,6 @@ module.exports = {
         toLog(5,'@@ response 200 ')
         resResources.doSuccess(res, 'Set reduce ok')
       } catch (error) {
-        redisClient.quit()
         toLog(5,'@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
@@ -1201,12 +1180,12 @@ function saveRoom(_client,rObj, myJson) {
   }
 
   if(myJson.hasOwnProperty('members')){
-    //_client.hsetValue(key, 'members', JSON.stringify(myJson.members))
+    _client.hsetValue(key, 'members', JSON.stringify(myJson.members))
     rObj.members = myJson.members
   }
 
   if(myJson.hasOwnProperty('missions')){
-    //_client.hsetValue(key, 'missions', JSON.stringify(myJson.missions))
+    _client.hsetValue(key, 'missions', JSON.stringify(myJson.missions))
     rObj.missions = myJson.missions
   }
    
@@ -1232,15 +1211,15 @@ async function setMissionStop(_req, _res, _status, _message) {
 
     let test = await toStopMssion(redisClient, room_id, _status, end)
 
-    if(test === null) {//Check sequence
+    if(test === false) {//Check sequence
       toLog('s3','@@ Mission not action yet')
+      redisClient.quit()
       return notAllowed(_res, 'setMissionStop', 'Mission not action yet')
     }
     redisClient.quit()
     toLog('s4','Response 200')
     resResources.doSuccess(_res, _message)
   } catch (error) {
-    redisClient.quit()
     toLog('s4','@@ response 500 :'+error.message)
     resResources.catchError(_res, error.message)
   }
@@ -1561,6 +1540,7 @@ async function switchMqttCmd(obj) {
           roomId:room_id,
           security:code.security_event
         })
+
         if(currentSecurity !== code.security_event) {
           let room = await dataResources.getRoom(room_id)
           let cpId = room.cp_id
@@ -1688,7 +1668,6 @@ async function switchMqttCmd(obj) {
       let test = await toStopMssion(redisClient, room_id, status, end)
       
     } catch (error) {
-      redisClient.quit()
       toLog('','@@ emergency_stop error:'+error.message)
     }
   }
@@ -1707,41 +1686,45 @@ async function toStopMssion(_client, _roomId, _status, _end) {
   let roomKey = 'room'+_roomId
   let path = roomPath+_roomId+'.json'
   let roomObj = file.getJsonFromFile(path)
-  let currentStatus = await _client.hgetValue(roomKey, 'status')
+  let all = await _client.hgetall(roomKey)
+  //let currentStatus = await _client.hgetValue(roomKey, 'status')
+  let currentStatus = 0
   let count = 0
   let macs = []
   let currentSequence =0
   let doorMac = null
 
-  if(currentStatus !== null) {//Check redis value
-    currentSequence = await _client.hgetValue(roomKey, 'sequence')
-    count = await _client.hgetValue(roomKey, 'count')
-    macs =  await _client.hgetValue(roomKey, 'macs')
+  if(all !== null) {//Check redis value
+    toLog('','@@ from redis')
+    currentStatus = parseInt(all.status)
+    currentSequence = parseInt(all.sequence)
+    count = parseInt(all.count)
+    macs =  JSON.parse(all.macs)
     //Jason add for open door on 2020.10.14
-    doorMac = await _client.hgetValue(roomKey, 'doorMac')
-    currentSequence = parseInt(currentSequence)
-    currentStatus = parseInt(currentStatus)
-    if(count)
-      count = parseInt(count)
-    if(macs)
-      macs = JSON.parse(macs)
+    doorMac = all.doorMac
   } else {
-    toLog('','@@ from redis null')
+    toLog('','@@ from file')
+    currentStatus = roomObj['status']
     currentSequence = roomObj['sequence']
     count = roomObj['count']
     macs = roomObj['macs']
-    currentStatus = roomObj['status']
     //Jason add for open door on 2020.10.14
     doorMac = roomObj['doorMac']
   }
   console.log('toStopMssion status: '+_status +' , doorMac: '+doorMac)
   
   toLog('','@@ currentSequence :'+ currentSequence + ', currentStatus :'+currentStatus)
-  if(currentSequence === 0 || currentStatus > 10 ){
+  if(currentSequence === 0 && currentStatus >= 10 ){
     //尚未闖關
     setRoomDefault(_client, _roomId , doorMac)
     _client.quit()
-    return false
+    return Promise.resolve(false)
+  }
+
+  if(currentStatus > 2 ){
+    //已經執行過,避免重複
+    _client.quit()
+    return Promise.resolve(false)
   }
  
   //Set door open 21
@@ -1749,25 +1732,24 @@ async function toStopMssion(_client, _roomId, _status, _end) {
     toLog('', '@@ mqtt open door')
     let openTime = new Date().toISOString()
     let doorObj = getMqttObject( doorMac, code.node_on_command, openTime, 1)
+    let mytest = await _client.remove(doorMac)
     sendMqttMessage(socket, doorObj, 0)
   }
 
   //setMissionEnd update status,end time ------------------------------
   let mac = macs[(currentSequence-1)]
+  toLog(4,'save redis mac :'+ mac+', end:'+_end)
   let test = await _client.hsetValue(mac, 'end', _end)
-  //Update room status, end to redis and file
-  saveRoom(_client, roomObj,{
+  
+  //Change door mission,status, end
+  let door_mission = await toGetDefaultMission(_roomId)
+  //_client.hsetValue(roomKey, 'door_mission', JSON.stringify(door_mission))
+  saveRoom(_client,roomObj,{
     roomId:_roomId,
+    door_mission: door_mission,
     status:_status,
     end:_end
   })
-
-  toLog(4,'save redis mac :'+ mac)
-
-  //Change door mission
-  let door_mission = await toGetDefaultMission(_roomId)
-  _client.hsetValue(roomKey, 'door_mission', JSON.stringify(door_mission))
-  
   //Save team record and mission record
   if(true) {
     toLog(5,'Before save team record')
@@ -1810,7 +1792,7 @@ async function toStopMssion(_client, _roomId, _status, _end) {
   
   
   _client.quit()
-  return true
+  return Promise.resolve(true)
 }
 
 async function toGetDefaultMission(roomId) {
