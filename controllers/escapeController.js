@@ -249,13 +249,15 @@ module.exports = {
 
         toLog(2,'Before get members')
         const obj = await dataResources.getMembers(user_id)
-        toLog(2,'After get team :'+ obj.team_id)
-		    console.log(obj.members)
+        toLog(2,'After get members')
+		    
         if(obj === null) {
           toLog('','@@ Not join team')
           redisClient.quit()
           return notAllowed(res, 'setMissionAction','Not join team')
         }
+        console.log('team_id:'+obj.team_id)
+        console.log(obj.members)
         // let teamId = obj.team_id
         let members = obj.members
 
