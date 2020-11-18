@@ -124,7 +124,12 @@ module.exports = {
           }
           toLog(2,'befor get teamMember')
           let teamUser = await dataResources.getTeamUser(user_id)
-          toLog(2,'after get teamMember : '+ teamUser.team_id)
+          toLog(2,'after get teamMember')
+          if(teamUser === null) {
+            toLog('3','Not join team')
+            redisClient.quit()
+            return notAllowed(res, 'sendMqttCmd default', 'Not join team')
+          }
           //Get missions from db
           toLog(3,'befor get default mission')
           let _missions = await dataResources.getMissions(room_id, 0)
