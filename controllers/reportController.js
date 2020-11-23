@@ -175,6 +175,7 @@ module.exports = {
         console.log('api_key !== app.api_key');
         return resResources.notAllowed(res)
       }
+      let  recv = req.body.time || req.query.time || new Date()
         
       //Get app by parse id
       let app = await Promise.resolve(App.findOne({where: {"id":app_id}}))
@@ -205,8 +206,7 @@ module.exports = {
       let obj = {
         "macAddr": mac,
         "app_id": app_id,
-        "created_at": new Date(),
-        "updated_at": new Date()
+        "recv": recv
       }
       let list = {}
       /*for(let i=0;i<8; i++) {
