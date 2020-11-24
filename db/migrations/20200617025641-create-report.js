@@ -49,8 +49,8 @@ module.exports = {
         type: Sequelize.STRING
       },
       recv: {
-        type: 'TIMESTAMP',
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        type: Sequelize.DATE(3),
+        defaultValue: Sequelize.fn('NOW'),
         allowNull: false
       }
     });

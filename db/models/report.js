@@ -14,7 +14,10 @@ module.exports = (sequelize, DataTypes) => {
     data: DataTypes.TEXT,
     extra: DataTypes.TEXT,
     app_id:DataTypes.INTEGER,
-    recv: DataTypes.DATE
+    recv: {
+      allowNull: false,
+      type: DataTypes.DATE(3)
+    }
   }, { 
     timestamps: false
   });
