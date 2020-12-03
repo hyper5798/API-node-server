@@ -355,7 +355,14 @@ async function sendControl(req, res, mqttClient) {
 }
 
 function decode_base64(str) {
-  return new Buffer(str, 'base64').toString()
+  let buf;
+  if (Buffer.alloc) {
+    buf = Buffer.from(str, 'base64');
+  } else {
+    buf = new Buffer(str, 'base64');
+    buf.fill(0);
+  }
+  return buf.toString()
 }
 
 

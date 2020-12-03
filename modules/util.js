@@ -156,9 +156,23 @@ async function parsingMsg(obj) {
   }
 
   function decode_base64(str) {
-    return new Buffer(str, 'base64').toString();
+    let buf;
+    if (Buffer.alloc) {
+      buf = Buffer.from(str, 'base64');
+    } else {
+      buf = new Buffer(str, 'base64');
+      buf.fill(0);
+    }
+    return buf.toString();
   }
 
   function encode_base64(str) {
-    return new Buffer(str).toString('base64');
+    let buf;
+    if (Buffer.alloc) {
+      buf = Buffer.from(str);
+    } else {
+      buf = new Buffer(st);
+      buf.fill(0);
+    }
+    return buf.toString('base64');
   }

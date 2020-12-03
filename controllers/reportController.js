@@ -175,8 +175,9 @@ module.exports = {
         console.log('api_key !== app.api_key');
         return resResources.notAllowed(res)
       }
-      let  recv = req.body.time || req.query.time || new Date()
-        
+      let  recv = req.body.time || req.query.time || new Date().toISOString()
+      
+      console.log('**** write recv:'+recv)
       //Get app by parse id
       let app = await Promise.resolve(App.findOne({where: {"id":app_id}}))
       if(api_key !== app.api_key) { 
@@ -289,11 +290,25 @@ module.exports = {
 }
 
 function decode_base64(str) {
-  return new Buffer(str, 'base64').toString();
+  let buf;
+  if (Buffer.alloc) {
+    buf = Buffer.from(str, 'base64');
+  } else {
+    buf = new Buffer(str, 'base64');
+    buf.fill(0);
+  }
+  return buf.toString();
 }
 
 function encode_base64(str) {
-  return new Buffer(str).toString('base64');
+  let buf;
+  if (Buffer.alloc) {
+    buf = Buffer.from(str);
+  } else {
+    buf = new Buffer(str);
+    buf.fill(0);
+  }
+  return buf.toString('base64');
 }
 
 function getAppId(api_key) {

@@ -213,5 +213,12 @@ function getKey(mac, cid) {
 }
 
 function encode_base64(str) {
-  return new Buffer(str).toString('base64');
+  let buf;
+  if (Buffer.alloc) {
+    buf = Buffer.from(str);
+  } else {
+    buf = new Buffer(str);
+    buf.fill(0);
+  }
+  return buf.toString('base64')
 }
