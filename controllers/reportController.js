@@ -173,6 +173,7 @@ module.exports = {
       let app_id = getAppId(api_key) 
       if(!app_id) {
         console.log('api_key !== app.api_key');
+        redisClient.quit()
         return resResources.notAllowed(res)
       }
       let  recv = req.body.time || req.query.time || new Date().toISOString()
@@ -182,6 +183,7 @@ module.exports = {
       let app = await Promise.resolve(App.findOne({where: {"id":app_id}}))
       if(api_key !== app.api_key) { 
         console.log('api_key !== app.api_key');
+        redisClient.quit()
         return resResources.notAllowed(res)
       }
       let mac = app.macAddr
@@ -193,6 +195,7 @@ module.exports = {
         let diff = (nowTime-oldTime)/1000;
         console.log('diff:'+diff);
         if(diff<=3) {
+          redisClient.quit()
           return resResources.notAllowed(res, 'The upload interval less then 3 seconds!')
         }
       }
@@ -222,7 +225,7 @@ module.exports = {
           obj[key] = null
       }
 
-      console.log(obj);
+      //console.log(obj);
       let newReport = await Report.create(obj)
       redisClient.quit()
       resResources.doSuccess(res, 'Create report success')
