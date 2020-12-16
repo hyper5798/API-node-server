@@ -25,7 +25,32 @@ const Command = require('./db/models').command
 const mqttConfig = require('./config/mqtt.json')
 const file = require('./modules/fileTools')
 let errorPath = './doc/log/error.txt';
+const schedule = require('node-schedule');
 
+function scheduleCronstyle(){
+  schedule.scheduleJob('1 1 1 1 * *', function(){
+    delReport()
+  });
+}
+
+async function delReport() {
+  const Report = require('./db/models').report
+  let date = new Date()
+  let newDate = new Date(date.setMonth(date.getMonth()-12))
+  console.log('schedule:' + newDate.toISOString())
+  
+  const { Op } = require('sequelize')
+  
+  let result = await Promise.resolve( Report.destroy({
+    where: {
+      recv: {[Op.lte]: newDate}
+    }
+  }))
+  
+  console.log('schedule delete:' + result)
+}
+
+scheduleCronstyle();
 
 //Jason add on 2020.02.16 - start
 const RED = require("node-red")
