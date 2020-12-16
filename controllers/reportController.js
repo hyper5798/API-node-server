@@ -8,7 +8,7 @@ const resResources = require('../lib/resResources')
 const Cp = require('../db/models').cp
 const App = require('../db/models').app
 const Promise = require('bluebird')
-
+const HttpTool = require('../modules/httpTool')
 
 module.exports = {
     async index(req, res, next) {
@@ -187,7 +187,7 @@ module.exports = {
         return resResources.notAllowed(res)
       }
       let mac = app.macAddr
-      let time = await redisClient.hgetValue('products', mac)
+      /*let time = await redisClient.hgetValue('products', mac)
       console.log('time from redis:'+time);
       if(time != null) {
         let oldTime = new Date(time).getTime();
@@ -198,7 +198,7 @@ module.exports = {
           redisClient.quit()
           return resResources.notAllowed(res, 'The upload interval less then 3 seconds!')
         }
-      }
+      }*/
       let utcTime = new Date().toISOString()
       //Update upload time
       redisClient.hsetValue('products', mac, utcTime)
@@ -227,6 +227,8 @@ module.exports = {
 
       //console.log(obj);
       let newReport = await Report.create(obj)
+      //Send report to strapi test
+      //let newReport = await HttpTool.post('/events',obj)
       redisClient.quit()
       resResources.doSuccess(res, 'Create report success')
       
