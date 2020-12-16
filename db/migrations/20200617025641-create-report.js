@@ -6,7 +6,7 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequlieze.INTEGER(20).UNSIGNED
       },
       macAddr: {
         allowNull: false,
@@ -16,28 +16,28 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       key1: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       key2: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       key3: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       key4: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       key5: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       key6: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       key7: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       key8: {
-        type: Sequelize.INTEGER
+        type: Sequelize.FLOAT
       },
       data: {
         type: Sequelize.TEXT
