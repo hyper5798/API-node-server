@@ -41,9 +41,11 @@ socket.on('update_mqtt_ul',function(data){
 });
 
 socket.on('change_mode',function(data){
+
   console.log('escapeController change_mode :'+ data.mode);
-  if(data.token === undefined || data.token === null) {
-    return
+  if( (data.token === undefined || data.token === null) ) {
+    if(!global.test)
+      return
   }
   switchMode(data.room_id, data.mode, data.token)
 });
@@ -1691,6 +1693,7 @@ async function switchMqttCmd(obj) {
 }
 
 /**
+ * function: open door,change door script, save team record
  * param 
  * _client: redis client
  * _mission: last sequence mission
@@ -1744,7 +1747,7 @@ async function toStopMssion(_client, _roomId, _status, _end) {
     return Promise.resolve(false)
   }
  
-  //Set door open 21
+  //Open door (21)
   if(_status === code.mission_pass || _status === code.mission_fail) {
     toLog('', '@@ mqtt open door')
     let openTime = new Date().toISOString()
