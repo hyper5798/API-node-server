@@ -660,7 +660,8 @@ module.exports = {
           team_id: 0,
           mode: 30,
           prompt: 0,
-          reduce: 0
+          reduce: 0,
+          countdown: 0
         }
         
         let all = await redisClient.hgetall(roomKey)
