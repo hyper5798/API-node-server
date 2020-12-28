@@ -1083,7 +1083,7 @@ async function switchMode(_room_id, _mode, _token) {
       for(let n=0;n<sList.length;n++) {
       
         let device = sList[n]
-        let nObj = getMqttObject( device.macAddr, code.node_off_command, actionTime, 1)
+        let nObj = getMqttObject( device.macAddr, code.game_mode_command, actionTime, 1)
         // MQTT secrity node off command 
         sendMqttMessage(socket, nObj, n*interval)
       }
@@ -1101,7 +1101,7 @@ async function switchMode(_room_id, _mode, _token) {
     
       let device = sList[n]
       // MQTT secrity node on command 
-      let nObj = getMqttObject( device.macAddr, code.node_on_command, actionTime, 1)
+      let nObj = getMqttObject( device.macAddr, code.security_mode_command, actionTime, 1)
       sendMqttMessage(socket, nObj, n*interval)
     }
   
