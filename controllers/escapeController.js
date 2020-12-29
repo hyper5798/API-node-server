@@ -777,9 +777,10 @@ module.exports = {
             data.countdown = pass_time - diff - data.reduce
             if(data.countdown == null) {
               console.log('Status countdown issue --------------------------------------')
+
               data.countdown = 0;
             }
-            console.log('pass_time'+pass_time+', start:'+start+', diff:'+diff + ', reduce:'+reduce)
+            console.log('pass_time'+pass_time+', start:'+start+', diff:'+diff + ', reduce:'+data.reduce)
             if(data.countdown < 0) {
               data.countdown = 0
             }
