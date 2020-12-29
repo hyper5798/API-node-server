@@ -773,9 +773,13 @@ module.exports = {
             //Jason add for reduce on 2020.10.08
             if(typeof data.reduce === 'string') data.reduce = parseInt(data.reduce)
             if(typeof pass_time === 'string') data.reduce = parseInt(pass_time)
-
+            
             data.countdown = pass_time - diff - data.reduce
-
+            if(data.countdown == null) {
+              console.log('Status countdown issue --------------------------------------')
+              data.countdown = 0;
+            }
+            console.log('pass_time'+pass_time+', start:'+start+', diff:'+diff + ', reduce:'+reduce)
             if(data.countdown < 0) {
               data.countdown = 0
             }
@@ -784,6 +788,8 @@ module.exports = {
         
         console.log('get status:')
         console.log(data)
+
+        
         
         redisClient.quit()
         
@@ -1572,15 +1578,13 @@ async function switchMqttCmd(obj) {
             tool.sendMail(email,'警告通知', room.room_name+'保全裝置被觸發')
           }
         }
-        
-        redisClient.quit()
-        return
       } catch (error) {
         toLog('','@@ security_event error:'+error.message)
       }
     } 
 
-    
+    redisClient.quit()
+    return
   }
   
   if(command === code.door_off_notify) {
