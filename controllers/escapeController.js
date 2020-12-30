@@ -1146,6 +1146,8 @@ async function switchMode(_room_id, _mode, _token) {
 function setRoomDefault(client,roomId,mac) {
   
   let tmp = {roomId:roomId,mode:30,sequence:0,doorMac:mac,status:0,team_id:0,reduce:0,prompt:0,start:'',end:''}
+  console.log('setRoomDefault:')
+  console.log(tmp)
   saveRoom(client,null, tmp)
 }
 
@@ -1158,6 +1160,7 @@ function saveRoom(_client,rObj, myJson) {
   }
 
   if(myJson.hasOwnProperty('mode')) {
+    console.log('setRoomDefault mode:'+ myJson.mode)
     _client.hsetValue(key, 'mode', myJson.mode)
     rObj.mode = myJson.mode
   }
