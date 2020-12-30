@@ -766,32 +766,31 @@ module.exports = {
           saveRoom(redisClient,roomObj,obj)
         }
         
-        if(data.status === 1 || data.status === 2) {//During in pass mission
+        if((data.status === 1 || data.status === 2) && (data.sequence > 0)) {//During in pass mission
             let now = new Date().toISOString()
-            let diff = getDiff(start, now)
-            //toLog('','@@ get diff :'+diff)
-            //Jason add for reduce on 2020.10.08
-            if(typeof data.reduce === 'string') data.reduce = parseInt(data.reduce)
-            if(typeof pass_time === 'string') data.reduce = parseInt(pass_time)
-            
-            data.countdown = pass_time - diff - data.reduce
-            if(data.countdown == null) {
-              console.log('Status countdown issue --------------------------------------')
-
-              data.countdown = 0;
+            if(start !== '') {
+              let diff = getDiff(start, now)
+              //toLog('','@@ get diff :'+diff)
+              //Jason add for reduce on 2020.10.08
+              if(typeof data.reduce === 'string') data.reduce = parseInt(data.reduce)
+              if(typeof pass_time === 'string') data.reduce = parseInt(pass_time)
+              
+              data.countdown = pass_time - diff - data.reduce
+              if(data.countdown == null) {
+                console.log('Status countdown issue --------------------------------------')
+                data.countdown = 0;
+              }
+              console.log('pass_time'+pass_time+', start:'+start+', diff:'+diff + ', reduce:'+data.reduce)
+              if(data.countdown < 0) {
+                data.countdown = 0
+              }
+              //toLog('', '@@ get countdown :'+data.countdown)
             }
-            console.log('pass_time'+pass_time+', start:'+start+', diff:'+diff + ', reduce:'+data.reduce)
-            if(data.countdown < 0) {
-              data.countdown = 0
-            }
-            //toLog('', '@@ get countdown :'+data.countdown)
         }
         
         console.log('get status:')
         console.log(data)
 
-        
-        
         redisClient.quit()
         
         toLog(3,'response 200')

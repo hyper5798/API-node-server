@@ -6,7 +6,7 @@ Promise.promisifyAll(Redis.RedisClient.prototype)
 Promise.promisifyAll(Redis.Multi.prototype)
 let options = {
   "host": 'localhost' ,
-  "port": 6379,
+  "port": 16379,
   "db": 0
 };
 
