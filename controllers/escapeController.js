@@ -1145,7 +1145,7 @@ async function switchMode(_room_id, _mode, _token) {
 
 function setRoomDefault(client,roomId,mac) {
   
-  let tmp = {roomId:roomId,sequence:0,doorMac:mac,status:0,team_id:0,reduce:0,prompt:0,start:'',end:''}
+  let tmp = {roomId:roomId,mode:30,sequence:0,doorMac:mac,status:0,team_id:0,reduce:0,prompt:0,start:'',end:''}
   saveRoom(client,null, tmp)
 }
 
