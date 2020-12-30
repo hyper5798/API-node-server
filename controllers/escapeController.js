@@ -882,7 +882,7 @@ module.exports = {
       }
     },
 
-    async setMode(req, res, next) {
+    setMode(req, res, next) {
       try {
         toLog(1,'setMode -------------------')
         //let input = checkInput(req, ['room_id', 'user_id'])
@@ -891,6 +891,10 @@ module.exports = {
         if(input === null || mode === null) {
           return missParam(res, 'setMode', 'miss param')
         }
+        //Connect redis
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
+        redisClient.connect()
         let room_id = input.room_id
         switchMode(room_id, mode, null )
         toLog('','@@ response 200 ')
@@ -903,30 +907,29 @@ module.exports = {
     },
 
     resetStatus(req, res, next) {
-      //Connect redis
-      const redisHandler  = require('../modules/redisHandler')
-      const redisClient = new redisHandler(0)
       try {
-        toLog(1,'resetStatus -------------------')
+        toLog(1,'setMode -------------------')
+        //let input = checkInput(req, ['room_id', 'user_id'])
         let input = checkInput(req, ['room_id'])
-        
-        if(input === null) {
-          missParam(res, 'resetStatus', 'miss param')
+        let mode = req.params.mode
+        if(input === null || mode === null) {
+          return missParam(res, 'setMode', 'miss param')
         }
-        //let user_id = parseInt(input.user_id)
-        let room_id = input.room_id
-        
+        //Connect redis
+        const redisHandler  = require('../modules/redisHandler')
+        const redisClient = new redisHandler(0)
         redisClient.connect()
-        
+        let room_id = input.room_id
         setRoomDefault(redisClient, room_id ,null)
-        redisClient.quit()
         toLog('','@@ response 200 ')
+        redisClient.quit()
         resResources.doSuccess(res, 'Reset status OK')
       } catch (error) {
-        redisClient.quit()
         toLog('','@@ response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
+     
+
     },
 }
 
@@ -1145,8 +1148,7 @@ async function switchMode(_room_id, _mode, _token) {
 
 function setRoomDefault(client,roomId,mac) {
   
-  let tmp = {roomId:roomId,mode:30,sequence:0,doorMac:mac,status:0,team_id:0,reduce:0,prompt:0,start:'',end:''}
-
+  let tmp = {roomId:roomId,sequence:0,doorMac:mac,status:0,team_id:0,reduce:0,prompt:0,start:'',end:''}
   saveRoom(client,null, tmp)
 }
 
