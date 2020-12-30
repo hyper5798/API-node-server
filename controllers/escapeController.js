@@ -900,7 +900,34 @@ module.exports = {
         resResources.catchError(res, error.message)
       }
 
-    }
+    },
+
+    resetStatus(req, res, next) {
+      //Connect redis
+      const redisHandler  = require('../modules/redisHandler')
+      const redisClient = new redisHandler(0)
+      try {
+        toLog(1,'resetStatus -------------------')
+        let input = checkInput(req, ['room_id'])
+        
+        if(input === null) {
+          missParam(res, 'resetStatus', 'miss param')
+        }
+        //let user_id = parseInt(input.user_id)
+        let room_id = input.room_id
+        
+        redisClient.connect()
+        
+        setRoomDefault(redisClient, room_id ,null)
+        redisClient.quit()
+        toLog('','@@ response 200 ')
+        resResources.doSuccess(res, 'Set mode mode '+mode+' ok')
+      } catch (error) {
+        redisClient.quit()
+        toLog('','@@ response 500 :'+error.message)
+        resResources.catchError(res, error.message)
+      }
+    },
 }
 
 async function switchMode(_room_id, _mode, _token) {
