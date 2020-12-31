@@ -982,6 +982,17 @@ async function switchMode(_room_id, _mode, _token) {
   
   //Jason add replay command on 2020.12.31
   if(_mode===code.replay_command){
+    let missions =  await redisClient.hgetValue(roomKey, 'missions')
+    if(missions !== null) {
+      missions = JSON.parse(missions)
+      for(let i=0;i<missions.length;i++) {
+        let time = new Date().toISOString()
+        let mission = missions[i]
+        let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
+        /*** MQTT node pass ***/
+        sendMqttMessage(socket, passObj, ((i)*interval))
+      }
+    }
     saveRoom(redisClient,roomObj,{
       roomId: _room_id,
       team_id: team_backup,
