@@ -985,10 +985,12 @@ async function switchMode(_room_id, _mode, _token) {
     saveRoom(redisClient,roomObj,{
       roomId: _room_id,
       team_id: team_backup,
-      sequence: 0,
+      mode: 30,
+      sequence: 1,
+      status: 1,
       prompt: 0,
       reduce: 0,
-      start: '',
+      start: new Date().toISOString(),
       end: ''
     })
     redisClient.quit()
