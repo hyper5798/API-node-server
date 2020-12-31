@@ -177,7 +177,7 @@ async function handleUpload1 (mObj) {
   //Jason save MQTT to report -------- start
   result = await saveMessage (obj)
   if(result.dataValues.id){
-    console.log(getDatestring() +'## Save message success')
+    console.log(getDatestring() +'Save message success')
   }
   //Jason save MQTT to report -------- end
   //98:security node 99:controller
@@ -186,9 +186,9 @@ async function handleUpload1 (mObj) {
   let status = obj.key1
   let command = obj.key2
   const Code = require('../doc/setting/code.json')
-  console.log(getDatestring() +'## mac : '+mac+', code '+status+' -> '+getCode(Code,status))
+  console.log(getDatestring() +'mac : '+mac+', code '+status+' -> '+getCode(Code,status))
   if(command ) {
-    console.log(getDatestring() +'## command '+command+' -> '+getCode(Code, command) + ' ack')
+    console.log(getDatestring() +'command '+command+' -> '+getCode(Code, command) + ' ack')
     //return 
   }
 

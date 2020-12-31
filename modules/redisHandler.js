@@ -21,7 +21,7 @@ class redisHandler {
     this.redisClient = Redis.createClient(options)
 
     this.redisClient.on('connect', function () {
-      console.log('Connected redis')
+      //console.log('Connected redis')
     })
 
     this.redisClient.on('disconnect', function () {

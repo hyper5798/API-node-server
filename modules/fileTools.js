@@ -25,7 +25,7 @@ function saveJaonFile(path,obj){
     try {
         let json = JSON.stringify(obj)
         fs.writeFileSync(path, json, 'utf8')
-        showLog("## saveJaonFile path: "+ path + ' -> ok')
+        //showLog("## saveJaonFile path: "+ path + ' -> ok')
     } catch (error) {
         showLog("## saveJaonFile path: "+ path + ' -> '+error.message)
     }
@@ -41,7 +41,7 @@ function getJaonFile(path){
             //console.log('read text :'+text);
             if(text.length>0){
                 let json = JSON.parse(text);
-                showLog("## getJaonFile path: "+ path + ' -> ok')
+                //showLog("## getJaonFile path: "+ path + ' -> ok')
                 return json;
             }else{
                 showLog("## getJaonFile path: "+ path + ' -> null')

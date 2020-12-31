@@ -92,29 +92,32 @@ module.exports = {
     },
 
     async sendMqttCmd(req, res, next) {
-      try {
-        let receiveTime = new Date().toISOString()
-        toLog(1,'sendMqttCmd -------------------')
-        let input = checkInput(req, ['room_id','macAddr','command'])
+      console.log(getLogTime()+'sendMqttCmd -------------------')
+      
+      let input = checkInput(req, ['room_id','macAddr','command'])
         
-        if(input === null) {
-          return missParam(res, 'sendMqttCmd', 'miss param')
-        }
+      if(input === null) {
+        return missParam(res, 'sendMqttCmd', 'miss param')
+      }
+      const redisHandler  = require('../modules/redisHandler')
+      const redisClient = new redisHandler(0)
+
+      try {
+        redisClient.connect()
+        let receiveTime = new Date().toISOString()
+        
         const room_id = parseInt(input.room_id)
         let macAddr = input.macAddr
         let command = parseInt(input.command)
+        //console.log('mac:'+macAddr+', command:'+command)
         
-
         if(macAddr === 'default') {
           toLog('2','command: default')
           let roomKey = 'room'+room_id
           let path = roomPath+room_id+'.json'
-          let roomObj = file.getJsonFromFile(path)
-          const redisHandler  = require('../modules/redisHandler')
-          const redisClient = new redisHandler(0)
-          redisClient.connect()
-          
+          let roomObj = file.getJsonFromFile(path)       
           let team_id = await redisClient.hgetValue(roomKey, 'team_id')
+          
           if(team_id != null) {
             team_id = parseInt(team_id)
             if(team_id > 0) {
@@ -125,34 +128,43 @@ module.exports = {
           }
           
           let user_id = req.body.user_id || req.query.user_id
+
           if(user_id === undefined || user_id === null) {
             redisClient.quit()
             return missParam(res, 'sendMqttCmd', 'miss param user_id')
           }
+
           toLog(2,'befor get teamMember')
           let teamUser = await dataResources.getTeamUser(user_id)
           toLog(2,'after get teamMember')
+
           if(teamUser === null) {
             toLog('3','Not join team')
             redisClient.quit()
             return notAllowed(res, 'sendMqttCmd default', 'Not join team')
           }
+
           //Get missions from db
           toLog(3,'befor get default mission')
           let _missions = await dataResources.getMissions(room_id, 0)
           toLog(3,'after get default mission : '+ _missions.length)
+          
           if(_missions.length == 0) {
             redisClient.quit()
             return notFound(res, 'sendMqttCmd','Not found default mission' )
           }
+          
           let m = _missions[0]
           macAddr = m.macAddr
+          
           if(macAddr === undefined || macAddr === null) {
             redisClient.quit()
             return notFound(res, 'sendMqttCmd','Not found default device' )
           }
+
           //Record door status
           let status = code.door_off_notify//10//11
+          
           if(command === code.node_on_command) {//21
             status = code.door_on_notify//11
           } else if(command === code.node_off_command){//20
@@ -169,20 +181,22 @@ module.exports = {
             status:status,
             team_id:teamUser.team_id,
             reduce:0,
-            prompt:0
+            prompt:0,
+            start: '',
+            end: ''
           })
           
           redisClient.quit()
         } else {
           //判斷是否有此裝置
         }
-        toLog(3,'get macAddr : '+ macAddr)
+        console.log(getLogTime()+'sendMqtt mac: '+ macAddr+ ',command:'+command)
         
         //Send MQTT command to node
         let cmdObj = getMqttObject( macAddr, command, receiveTime, 1)
         sendMqttMessage(socket, cmdObj)//To server.js mqtt client send message
         
-		    toLog(4,'response 200')
+		    console.log(getLogTime()+'sendMqttCmd response 200')
         resResources.doSuccess(res, 'Send mqtt command ok')
       } catch (error) {
         toLog(4,'@@ response 500 :'+error.message)
@@ -910,25 +924,27 @@ module.exports = {
     },
 
     resetStatus(req, res, next) {
+      console.log(getLogTime()+'resetStatus -------------------')
+      let input = checkInput(req, ['room_id'])
+      
+      if(input === null) {
+        return missParam(res, 'resetStatus', 'miss param')
+      }
+      const redisHandler  = require('../modules/redisHandler')
+      const redisClient = new redisHandler(0)
+
       try {
-        toLog(1,'setMode -------------------')
-        //let input = checkInput(req, ['room_id', 'user_id'])
-        let input = checkInput(req, ['room_id'])
-        let mode = req.params.mode
-        if(input === null || mode === null) {
-          return missParam(res, 'setMode', 'miss param')
-        }
         //Connect redis
-        const redisHandler  = require('../modules/redisHandler')
-        const redisClient = new redisHandler(0)
+        
         redisClient.connect()
         let room_id = input.room_id
         setRoomDefault(redisClient, room_id ,null)
-        toLog('','@@ response 200 ')
         redisClient.quit()
+        console.log(getLogTime()+'resetStatus response 200 ')
         resResources.doSuccess(res, 'Reset status OK')
       } catch (error) {
-        toLog('','@@ response 500 :'+error.message)
+        redisClient.quit()
+        console.log(getLogTime()+'resetStatus response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
      
@@ -1247,8 +1263,12 @@ function saveRoom(_client,rObj, myJson) {
     _client.hsetValue(key, 'missions', JSON.stringify(myJson.missions))
     rObj.missions = myJson.missions
   }
-   
   file.saveJsonToFile(path, rObj)
+  
+  if(global.debug) {
+    console.log(getLogTime()+'saveRoom:')
+    console.log(myJson)
+  }
 }
 
 async function setMissionStop(_req, _res, _status, _message) {
@@ -1368,7 +1388,8 @@ function missParam(_res, _target, _msg) {
 }
 
 function toLog(_num, _msg) {
-  dataResources.showLog('## '+_num+'. '+_msg)
+  if(global.debug)
+    dataResources.showLog('## '+_num+'. '+_msg)
 }
 
 function getLogTime() {
