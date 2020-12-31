@@ -58,7 +58,6 @@ module.exports = {
      * @return mission
      */
     async getDefaultMission(req, res, next) {
-      toLog(1,'getDefaultMission -------------------')
       console.log(getLogTime()+'getDefaultMission -------------------')
       let input = checkInput(req, ['room_id'])
       
@@ -82,7 +81,7 @@ module.exports = {
         }
         
         redisClient.quit()
-        toLog(5,'response 200')
+        console.log(getLogTime()+'getDefaultMission response 200')
         resResources.getDtaSuccess(res, mission)
       } catch (error) {
 
@@ -1299,7 +1298,7 @@ function checkInput(req, arr) {
       return null
     } else {
       //toLog('','@@ checkInput')
-      console.log(result)
+      //console.log(result)
       return result
     }
       
