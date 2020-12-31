@@ -51,22 +51,28 @@ socket.on('change_mode',function(data){
 });
 
 module.exports = {
+    /**
+     * 取得大門任務
+     *
+     * @param int room_id
+     * @return mission
+     */
     async getDefaultMission(req, res, next) {
+      toLog(1,'getDefaultMission -------------------')
+      console.log(getLogTime()+'getDefaultMission -------------------')
+      let input = checkInput(req, ['room_id'])
+      
+      if(input === null) {
+        return missParam(res, 'getDefaultMission', 'miss param')
+      }
+      const redisHandler  = require('../modules/redisHandler')
+      const redisClient = new redisHandler(0)
+      redisClient.connect()
+
       try {
-        
-        toLog(1,'getDefaultMission -------------------')
-        //let input = checkInput(req, ['room_id', 'user_id'])
-        let input = checkInput(req, ['room_id'])
-        
-        if(input === null) {
-          return missParam(res, 'getDefaultMission', 'miss param')
-        }
-        //let user_id = parseInt(input.user_id)
         const room_id = input.room_id
         const roomkey = 'room'+room_id
-        const redisHandler  = require('../modules/redisHandler')
-        const redisClient = new redisHandler(0)
-          redisClient.connect()
+        
         let mission = await redisClient.hgetValue(roomkey, 'door_mission')
         if(mission !== null) {
           mission = JSON.parse(mission)
@@ -76,12 +82,12 @@ module.exports = {
         }
         
         redisClient.quit()
-        
         toLog(5,'response 200')
-        
         resResources.getDtaSuccess(res, mission)
       } catch (error) {
-        toLog(5,'@@ response 500 :'+error.message)
+
+        redisClient.quit()
+        console.log(getLogTime()+'getDefaultMission response 500 :'+error.message)
         resResources.catchError(res, error.message)
       }
     },
@@ -686,10 +692,8 @@ module.exports = {
           if(all.mode)
             data.mode = parseInt(all.mode)
           
-          if(data.sequence == 1 || data.sequence == 2) {
-            pass_time = parseInt(all.pass_time)
-            start = all.start
-          }
+          pass_time = parseInt(all.pass_time)
+          start = all.start
 
         } else {
           toLog(2,'get room data from file')
@@ -1366,6 +1370,10 @@ function missParam(_res, _target, _msg) {
 
 function toLog(_num, _msg) {
   dataResources.showLog('## '+_num+'. '+_msg)
+}
+
+function getLogTime() {
+  return new Date().toISOString()+ ' >>> '
 }
 
 function initRoomRedis(_client,_room, _teamId, _members,_time, _macs) {
