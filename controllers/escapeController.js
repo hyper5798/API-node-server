@@ -180,6 +180,7 @@ module.exports = {
             doorMac:macAddr,
             status:status,
             team_id:teamUser.team_id,
+            team_backup:teamUser.team_id,
             reduce:0,
             prompt:0,
             start: '',
@@ -970,13 +971,29 @@ async function switchMode(_room_id, _mode, _token) {
   const redisHandler  = require('../modules/redisHandler')
   const redisClient = new redisHandler(0)
   redisClient.connect()
-  
+  console.log(getLogTime()+'switchMode -------------------')
   console.log('room_id:'+_room_id+', mode:'+_mode)
-  toLog(2,'get data from file')
+  
   
   let roomKey = 'room'+_room_id
   let path = roomPath+_room_id+'.json'
   let roomObj = file.getJsonFromFile(path)
+  let team_backup = await redisClient.hgetValue(roomKey, 'team_backup')
+  
+  //Jason add replay command on 2020.12.31
+  if(_mode===code.replay_command){
+    saveRoom(redisClient,roomObj,{
+      roomId: _room_id,
+      team_id: team_backup,
+      sequence: 0,
+      prompt: 0,
+      reduce: 0,
+      start: '',
+      end: ''
+    })
+    redisClient.quit()
+    return
+  }
   
   //Reset command
   if(_mode===code.reset_command){
@@ -1066,26 +1083,47 @@ async function switchMode(_room_id, _mode, _token) {
     redisClient.quit()
     return
   }
-
+  let mode = null
   if(_mode===code.door_on_notify){
+    
     try {
-      toLog(3,'befor get default mission')
-      let _missions = await dataResources.getMissions(_room_id, 0)
-      toLog(3,'after get default mission : '+ _missions.length)
-      if(_missions.length == 0) {
-        toLog(4,'Not found default mission')
-      } else {
-        let m = _missions[0]
-        let macAddr = m.macAddr
-        //Send MQTT command to node
-        let receiveTime = new Date().toISOString()
-        let onObj = getMqttObject( macAddr, code.node_on_command, receiveTime, 1)
-        sendMqttMessage(socket, onObj)
+      console.log(getLogTime()+'switchMode open door')
+      mode = await redisClient.hgetValue(roomKey, 'mode')
+
+      let doorMac = await redisClient.hgetValue(roomKey, 'doorMac')
+      if(doorMac===null) {
+        doorMac = roomObj.doorMac
       }
+      //Send open door MQTT command to node
+      let receiveTime = new Date().toISOString()
+      let onObj = getMqttObject( doorMac, code.node_on_command, receiveTime, 1)
+      sendMqttMessage(socket, onObj)
     } catch (error) {
       toLog(3,'@@ error:'+error.message)
     }
+    //Security mode only open door
+    if(mode !== null) {
+      mode = parseInt(mode)
+    }
+    if(mode === code.security_mode_command) {
+      redisClient.quit()
+      return
+    }
     
+    try {
+      console.log(getLogTime()+'switchMode open node door')
+      let macs = await redisClient.hgetValue(roomKey, 'macs')
+      macs = JSON.parse(macs)
+      for(let i=0;i<macs.length;i++) {
+        let time = new Date().toISOString()
+        let openObj = getMqttObject( macs[i], code.node_on_command, time, 1)
+        /*** MQTT open game door ***/
+        sendMqttMessage(socket, openObj, ((i)*interval))
+      }
+      
+    } catch (error) {
+      toLog(4,'@@ error:'+error.message)
+    }
     redisClient.quit()
     return
   }
@@ -1202,6 +1240,10 @@ function saveRoom(_client,rObj, myJson) {
   if(myJson.hasOwnProperty('team_id')){
     _client.hsetValue(key, 'team_id', myJson.team_id)
     rObj.team_id = myJson.team_id
+  }
+
+  if(myJson.hasOwnProperty('team_backup')){
+    _client.hsetValue(key, 'team_backup', myJson.team_backup)
   }
     
   if(myJson.hasOwnProperty('reduce')){

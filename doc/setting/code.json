@@ -16,6 +16,7 @@
     "mission_end_command": 24,
     "stop_command": 25,
     "emergency_stop_command": 26,
+    "replay_command": 27,
     "game_mode_command": 30,
     "demo_mode_command": 31,
     "security_mode_command": 32
