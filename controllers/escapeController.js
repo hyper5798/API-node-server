@@ -1062,7 +1062,7 @@ async function switchMode(_room_id, _mode, _token) {
           roomId:_room_id,
           security: 0
         })
-        toLog(4,'Before get security nodes')
+        /*toLog(4,'Before get security nodes')
         let dList = await dataResources.getSecurityNode(_room_id)
         toLog(4,'After get security nodes :'+dList.length)
         let time = new Date().toISOString()
@@ -1072,7 +1072,7 @@ async function switchMode(_room_id, _mode, _token) {
           //Send MQTT on command to security node
           let onObj = getMqttObject( tmp.macAddr, code.node_on_command, time, 1)
           sendMqttMessage(socket, onObj, ((k+1)*interval))
-        }
+        }*/
       } else { //System reset
         //Save default wit mode to redis and file
         toLog(3, 'System reset')
