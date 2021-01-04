@@ -337,21 +337,19 @@ module.exports = {
           macList.splice(inx, 0 , mission.macAddr)
           inx++
           if(mission.sequence ===1) {
-            let cmdObj = getMqttObject( mission.macAddr, code.mission_start, actionTime, 1)//code.mission_start:1
-            toLog(9,'Before save report')
-            let test = await dataResources.saveReport(cmdObj)
-            toLog(9,'After save report')
+            //let cmdObj = getMqttObject( mission.macAddr, code.mission_start, actionTime, 1)//code.mission_start:1
+            //toLog(9,'Before save report')
+            //let test = await dataResources.saveReport(cmdObj)
+            //toLog(9,'After save report')
             roomObj['start'] = actionTime
             //Send socket to web
-            sendSocketCmd(socket, cmdObj)
+            //sendSocketCmd(socket, cmdObj)
             //code.mission_start_command 23: 啟動 node
             let startNodeObj = getMqttObject( mission.macAddr, code.mission_start_command, actionTime, 1)
             sendMqttMessage(socket, startNodeObj, 2*interval)
             
             initMacRedis(redisClient,mission.macAddr, room_id, mission.id,mission.sequence, actionTime )
-          }
-            
-          else {
+          } else {
             initMacRedis(redisClient,mission.macAddr, room_id, mission.id, mission.sequence, null )
          
           }
@@ -981,6 +979,8 @@ async function switchMode(_room_id, _mode, _token) {
   let team_backup = await redisClient.hgetValue(roomKey, 'team_backup')
   
   //Jason add replay command on 2020.12.31
+  let actionTime = new Date().toISOString()
+
   if(_mode===code.replay_command){
     let missions =  await redisClient.hgetValue(roomKey, 'missions')
     if(missions !== null) {
@@ -991,8 +991,19 @@ async function switchMode(_room_id, _mode, _token) {
         let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
         /*** MQTT node pass ***/
         sendMqttMessage(socket, passObj, ((i)*interval))
+        //Remove mac data from redis
+        if(i===0) {
+          initMacRedis(redisClient, mission.macAddr, _room_id, mission.id,mission.sequence, actionTime )
+        } else {
+          initMacRedis(redisClient, mission.macAddr, _room_id, mission.id, mission.sequence, null )
+        }
       }
     }
+    let mac = missions[0].macAddr
+    
+    let startNodeObj = getMqttObject( mac, code.mission_start_command, actionTime, 1)
+    sendMqttMessage(socket, startNodeObj, 2*interval)
+    
     saveRoom(redisClient,roomObj,{
       roomId: _room_id,
       team_id: team_backup,
@@ -1001,9 +1012,10 @@ async function switchMode(_room_id, _mode, _token) {
       status: 1,
       prompt: 0,
       reduce: 0,
-      start: new Date().toISOString(),
+      start: actionTime,
       end: ''
     })
+
     redisClient.quit()
     return
   }
@@ -1118,6 +1130,8 @@ async function switchMode(_room_id, _mode, _token) {
     if(mode !== null) {
       mode = parseInt(mode)
     }
+
+    //Security mode bypass node open
     if(mode === code.security_mode_command) {
       redisClient.quit()
       return
@@ -1130,6 +1144,15 @@ async function switchMode(_room_id, _mode, _token) {
       for(let i=0;i<macs.length;i++) {
         let time = new Date().toISOString()
         let openObj = getMqttObject( macs[i], code.node_on_command, time, 1)
+        /*** MQTT open game door ***/
+        sendMqttMessage(socket, openObj, ((i)*interval))
+      }
+
+      let sList = await dataResources.getSecurityNode(_room_id)
+      for(let i=0;i<sList.length;i++) {
+        let time = new Date().toISOString()
+        let device = sList[i]
+        let openObj = getMqttObject( device.macAddr, code.node_on_command, time, 1)
         /*** MQTT open game door ***/
         sendMqttMessage(socket, openObj, ((i)*interval))
       }
