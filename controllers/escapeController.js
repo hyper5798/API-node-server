@@ -208,15 +208,17 @@ module.exports = {
     async setMissionAction(req, res, next) {
       
       const actionTime = new Date().toISOString()
-      toLog(1,'setMissionAction -------------------')
+      console.log(getLogTime()+'setMissionAction -------------------')
       let input = checkInput(req, ['room_id', 'user_id'])
       
       if(input === null) {
         missParam(res, 'setMissionAction', 'miss param')
       }
+      
       //let user_id = parseInt(input.user_id)
       let room_id = input.room_id
       let user_id = parseInt(input.user_id)
+      console.log('room_id:'+room_id+', user_id:'+user_id)
       let roomKey = 'room'+room_id
       let path = roomPath+room_id+'.json'
       let roomObj = file.getJsonFromFile(path)
@@ -269,9 +271,9 @@ module.exports = {
           return
         }
 
-        toLog(2,'Before get members')
+        
         const obj = await dataResources.getMembers(user_id)
-        toLog(2,'After get members')
+        toLog(2,'get members')
 		    
         if(obj === null) {
           toLog('','@@ Not join team')
@@ -279,32 +281,29 @@ module.exports = {
           return notAllowed(res, 'setMissionAction','Not join team')
         }
         console.log('team_id:'+obj.team_id)
-        console.log(obj.members)
+        console.log('member:'+JSON.stringify(obj.members))
         // let teamId = obj.team_id
         let members = obj.members
 
         //Get room
-        toLog(3,'Before get room')
         let room = await dataResources.getRoom(room_id)
-        toLog(3,'After get room')
-		    console.log(room)
+        toLog(3,'get room:'+room.room_name)
+		    
         if(room === null ) {
           redisClient.quit()
           return notFound(res, 'setMissionAction', 'Not found room')
         }
         //Get missions
-        toLog(4,'Before get mission')
         let mList = await dataResources.getMissions(room_id, null)
-		    toLog(4,'After get mission :'+mList.length)
+		    toLog(4,'get mission :'+mList.length)
         
         if(mList === null || mList.length === 0 ) {
           redisClient.quit()
           return notFound(res, 'setMissionAction', 'Not found mission '+ mList.length)
         }
 
-        toLog(6, 'Before get getGroupScript')
         let scriptGroup = await dataResources.getGroupScript(room_id)
-        toLog(6, 'After get getGroupScript '+Object.keys(scriptGroup).length)
+        toLog(5, 'getGroupScript '+Object.keys(scriptGroup).length)
         if(Object.keys(scriptGroup).length === 0 ) {
           redisClient.quit()
           return notFound(res, 'setMissionAction','Not found script')
@@ -326,7 +325,7 @@ module.exports = {
         let changePass = {}
         if(defaultIndex > -1) 
           lists.splice(defaultIndex, 1);
-        toLog(8,'save mission redis and random script')
+        toLog(6,'save mission redis and random script')
         for(let i=0;i<lists.length;i++) {
 
           let mission = lists[i]
@@ -337,13 +336,10 @@ module.exports = {
           macList.splice(inx, 0 , mission.macAddr)
           inx++
           if(mission.sequence ===1) {
-            //let cmdObj = getMqttObject( mission.macAddr, code.mission_start, actionTime, 1)//code.mission_start:1
-            //toLog(9,'Before save report')
+            
             //let test = await dataResources.saveReport(cmdObj)
             //toLog(9,'After save report')
-            roomObj['start'] = actionTime
-            //Send socket to web
-            //sendSocketCmd(socket, cmdObj)
+           
             //code.mission_start_command 23: 啟動 node
             let startNodeObj = getMqttObject( mission.macAddr, code.mission_start_command, actionTime, 1)
             sendMqttMessage(socket, startNodeObj, 2*interval)
@@ -351,7 +347,6 @@ module.exports = {
             initMacRedis(redisClient,mission.macAddr, room_id, mission.id,mission.sequence, actionTime )
           } else {
             initMacRedis(redisClient,mission.macAddr, room_id, mission.id, mission.sequence, null )
-         
           }
           mission.script = getScript(scriptGroup[mission.id])
           if(mission.script.next_pass!==null && mission.script.next_sequence!==null) {
@@ -371,6 +366,15 @@ module.exports = {
           /*** MQTT pass ***/
           sendMqttMessage(socket, passObj, ((i)*interval))
         }
+        //Sende off command via MQTT for Close back boor 
+        let sList = await dataResources.getSecurityNode(room_id)
+        for(let i=0;i<sList.length;i++) {
+          let time = new Date().toISOString()
+          let device = sList[i]
+          let closeObj = getMqttObject( device.macAddr, code.node_off_command, time, 1)
+          /*** MQTT open game door ***/
+          sendMqttMessage(socket, closeObj, ((i)*interval))
+        }
         //Save room to redis and file
         saveRoom(redisClient,roomObj,{
           roomId:room_id,
@@ -387,7 +391,7 @@ module.exports = {
 
         redisClient.quit()
         let data = {"room":room, "members":members, "missions":lists }
-        toLog(10,'response 200')
+        console.log(getLogTime()+'setMissionAction 200 OK')
         resResources.getDtaSuccess(res, data)
       } catch (error) {
         toLog(10,'@@ response 500 :'+error.message)
@@ -983,6 +987,7 @@ async function switchMode(_room_id, _mode, _token) {
 
   if(_mode===code.replay_command){
     let missions =  await redisClient.hgetValue(roomKey, 'missions')
+    //Send pass via MQTT
     if(missions !== null) {
       missions = JSON.parse(missions)
       for(let i=0;i<missions.length;i++) {
@@ -999,8 +1004,16 @@ async function switchMode(_room_id, _mode, _token) {
         }
       }
     }
+    //Sende off command via MQTT for Close back boor 
+    let sList = await dataResources.getSecurityNode(_room_id)
+    for(let i=0;i<sList.length;i++) {
+      let time = new Date().toISOString()
+      let device = sList[i]
+      let closeObj = getMqttObject( device.macAddr, code.node_off_command, time, 1)
+      /*** MQTT open game door ***/
+      sendMqttMessage(socket, closeObj, ((i)*interval))
+    }
     let mac = missions[0].macAddr
-    
     let startNodeObj = getMqttObject( mac, code.mission_start_command, actionTime, 1)
     sendMqttMessage(socket, startNodeObj, 2*interval)
     
@@ -1090,7 +1103,7 @@ async function switchMode(_room_id, _mode, _token) {
           sendMqttMessage(socket, resetObj, ((k+1)*interval))
         }
   
-        toLog(5,'Before get security nodes')
+        
         let dList = await dataResources.getSecurityNode(_room_id)
         toLog(5,'After get security nodes :'+dList.length)
         for(let k=0;k<dList.length;k++) {
@@ -1147,7 +1160,7 @@ async function switchMode(_room_id, _mode, _token) {
         /*** MQTT open game door ***/
         sendMqttMessage(socket, openObj, ((i)*interval))
       }
-
+      //Sende on command via MQTT for open back boor
       let sList = await dataResources.getSecurityNode(_room_id)
       for(let i=0;i<sList.length;i++) {
         let time = new Date().toISOString()
@@ -1344,8 +1357,7 @@ function saveRoom(_client,rObj, myJson) {
   file.saveJsonToFile(path, rObj)
   
   if(global.debug) {
-    console.log(getLogTime()+'saveRoom:')
-    console.log(myJson)
+    console.log(getLogTime()+'saveRoom:\n'+JSON.stringify(myJson))
   }
 }
 
@@ -1631,7 +1643,7 @@ async function switchMqttCmd(obj) {
     return
   }
 
-  toLog(1,'switchMqttCmd -------------------'+command )
+  console.log(getLogTime()+'switchMqttCmd ---------------'+command )
 
   if(command === 5) {
     command = parseInt(obj.key2)
@@ -1648,12 +1660,12 @@ async function switchMqttCmd(obj) {
 
     let device = await dataResources.getSecurityNodeByMac(macAddr)
     room_id = device.setting_id
-    toLog('','@@ get security room_id: '+ room_id )
+    console.log(getLogTime()+'get security room_id: '+ room_id )
   } else {
     
     mission = await dataResources.getMissionByMac(macAddr)
     room_id = mission.room_id
-    toLog('','@@ get mission room_id: '+ room_id )
+    console.log(getLogTime()+'get mission room_id: '+ room_id )
   }
   let roomKey = 'room'+room_id
   let path = roomPath+room_id+'.json'
