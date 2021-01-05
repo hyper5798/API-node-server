@@ -24,4 +24,5 @@ escapeRoute.get('/stop', escapeController.setEmergencyStop)
 escapeRoute.get('/reduce', escapeController.setReduce)
 escapeRoute.get('/setmode/:mode', escapeController.setMode)
 escapeRoute.get('/resetStatus', escapeController.resetStatus)
+escapeRoute.get('/gameTest', escapeController.gameTest)
 module.exports = escapeRoute
