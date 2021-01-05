@@ -163,12 +163,12 @@ module.exports = {
           }
 
           //Record door status
-          let status = code.door_off_notify//10//11
+          let door = code.door_off_notify//10//11
           
           if(command === code.node_on_command) {//21
-            status = code.door_on_notify//11
+            door = code.door_on_notify//11
           } else if(command === code.node_off_command){//20
-            status = code.door_off_notify//10
+            door = code.door_off_notify//10
           }
           
           //redisClient.hsetValue(macAddr,'door', status)
@@ -178,7 +178,8 @@ module.exports = {
             roomId:room_id,
             sequence:0,
             doorMac:macAddr,
-            status:status,
+            status:0,
+            door: door,
             team_id:teamUser.team_id,
             team_backup:teamUser.team_id,
             reduce:0,
@@ -233,45 +234,45 @@ module.exports = {
         
         
         let status = await redisClient.hgetValue(roomKey, 'status')
+        let door = await redisClient.hgetValue(roomKey, 'door')
         if(status === code.security_event) {
           redisClient.quit()
           notAllowed(res, 'setMissionAction', 'Security event')
         }
         let doorMac = await redisClient.hgetValue(roomKey, 'doorMac')
 		    
-        if(status === null) {
+        if(door === null) {
           if(roomObj)
             //currentSequence = roomObj['sequence']
-            status = roomObj['status']
+            door = roomObj['door']
         } else {
           //currentSequence = parseInt(currentSequence)
-          status = parseInt(status)
+          door = parseInt(door)
         }
         
-        if(status !== code.door_off_notify) {//10
-          if(status === code.mission_start || status === code.mission_end) {
-            //已開始闖關,重複發出命令----------------------------------
-            toLog('','@@ Already acted')
-            notAllowed(res, 'setMissionAction', 'Already acted')
-          } else if(status === code.emergency_stop) {
-            //進入大門尚未闖關按下緊急按紐------------------------------
-            setRoomDefault(redisClient, room_id ,doorMac)
-            toLog('','@@ Emergency door open')
-            conflict(res, 'setMissionAction', 'Emergency door open')
-          } else if(status === code.door_on_notify){
-            //未關大門 ------------------------------------------------
-            toLog('','@@ Door open')
-            notAcceptable(res, 'setMissionAction', 'Door open')
-          } else if(status === 0){
-            //未解大門謎題,直接進入者 ??????????????????????????????????
-            toLog('','@@ Door mission fail')
-            notAcceptable(res, 'setMissionAction', 'Door mission fail')
-          }
+        if(door === code.door_on_notify){
+          //未關大門 ------------------------------------------------
+          toLog('','@@ Door open')
+          notAcceptable(res, 'setMissionAction', 'Door open')
+          redisClient.quit()
+          return
+        } 
+
+        if(status === code.mission_start || status === code.mission_end) {
+          //已開始闖關,重複發出命令----------------------------------
+          toLog('','@@ Already acted')
+          notAllowed(res, 'setMissionAction', 'Already acted')
+          redisClient.quit()
+          return
+        } else if(status === code.emergency_stop) {
+          //進入大門尚未闖關按下緊急按紐------------------------------
+          setRoomDefault(redisClient, room_id ,doorMac)
+          toLog('','@@ Emergency door open')
+          conflict(res, 'setMissionAction', 'Emergency door open')
           redisClient.quit()
           return
         }
 
-        
         const obj = await dataResources.getMembers(user_id)
         toLog(2,'get members')
 		    
@@ -680,6 +681,7 @@ module.exports = {
           status: 0,
           sequence: 0,
           team_id: 0,
+          door: 10,
           mode: 30,
           prompt: 0,
           reduce: 0,
@@ -707,6 +709,9 @@ module.exports = {
 
           if(all.mode)
             data.mode = parseInt(all.mode)
+          
+          if(all.door)
+            data.door = parseInt(all.door)
           
           pass_time = parseInt(all.pass_time)
           start = all.start
@@ -781,6 +786,10 @@ module.exports = {
 
           if(roomObj.hasOwnProperty('macs')) {
             obj.macs = roomObj['macs'];
+          }
+
+          if(roomObj.hasOwnProperty('door')) {
+            obj.door = roomObj['door'];
           }
 
           saveRoom(redisClient,roomObj,obj)
@@ -1009,7 +1018,7 @@ module.exports = {
     },
 }
 
-async function switchMode(_room_id, _mode, _token) {
+async function  switchMode(_room_id, _mode, _token) {
   //Connect redis
   if(_token) {
     //From soket need check token
@@ -1141,7 +1150,7 @@ async function switchMode(_room_id, _mode, _token) {
           security: 0,
           team_id: 0,
           door_mission: door_mission,
-          start: ''
+          start: '',
         })
         
         //toLog(4,'Before get missions')
@@ -1308,7 +1317,7 @@ async function switchMode(_room_id, _mode, _token) {
 
 function setRoomDefault(client,roomId,mac) {
   
-  let tmp = {roomId:roomId,sequence:0,doorMac:mac,status:0,team_id:0,reduce:0,prompt:0,start:'',end:''}
+  let tmp = {roomId:roomId,sequence:0,doorMac:mac,status:0,team_id:0,reduce:0,prompt:0,start:'',end:'',door:10}
   saveRoom(client,null, tmp)
 }
 
@@ -1318,6 +1327,11 @@ function saveRoom(_client,rObj, myJson) {
 
   if(rObj === undefined || rObj === null) {
     rObj = {}
+  }
+
+  if(myJson.hasOwnProperty('door')) {
+    _client.hsetValue(key, 'door', myJson.door)
+    rObj.door = myJson.door
   }
 
   if(myJson.hasOwnProperty('mode')) {
@@ -1792,17 +1806,26 @@ async function switchMqttCmd(obj) {
   if(command === code.door_off_notify) {
     toLog(2, 'door_off_notify')
     
-    let doorStatus = await redisClient.hgetValue(roomKey, 'status')
-    
-    if(doorStatus) doorStatus = parseInt(doorStatus)
-    if(doorStatus === code.door_on_notify) {
+    let door = await redisClient.hgetValue(roomKey, 'door')
+    let status = await redisClient.hgetValue(roomKey, 'status')
+
+    if(door) door = parseInt(door)
+    if(status) status = parseInt(status)
+    if(status === code.emergency_stop || status === code.mission_pass || status === code.mission_fail){
+      //Send close status to web
+      let time = new Date().toISOString()
+      let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
+      sendSocketCmd(socket, closeObj)
+      setRoomDefault(redisClient, room_id ,macAddr)
+      toLog(3, 'Reset status to default')
+    } else if(door === code.door_on_notify) {
       //表示大門開啟過,然後上報關閉,表示進入可啟動模式 ,若要開啟輔助照明可於此開啟
       //存到Redis
       //redisClient.hsetValue(macAddr, 'door', code.door_off_notify)
 
       saveRoom(redisClient,roomObj,{
         roomId:room_id,
-        status:code.door_off_notify
+        door:code.door_off_notify,
       })
         
       //收到 MQTT時就存到DB
@@ -1812,21 +1835,14 @@ async function switchMqttCmd(obj) {
       let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
       sendSocketCmd(socket, closeObj)
       toLog(3, 'save door status door_off_notify :' + code.door_off_notify)
-    } else if(doorStatus === code.emergency_stop || doorStatus === code.mission_pass || doorStatus === code.mission_fail){
-      //Send close status to web
-      let time = new Date().toISOString()
-      let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
-      sendSocketCmd(socket, closeObj)
-      setRoomDefault(redisClient, room_id ,macAddr)
-      toLog(3, 'Reset status to default')
-    } else {
+    }  else {
       toLog(3, 'Just show door closed')
       let time = new Date().toISOString()
       let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
       sendSocketCmd(socket, closeObj)
       saveRoom(redisClient,roomObj,{
         roomId:room_id,
-        status:code.door_off_notify
+        door:code.door_off_notify
       })
     }
     redisClient.quit()
@@ -1975,6 +1991,7 @@ async function toStopMssion(_client, _roomId, _status, _end) {
     roomId:_roomId,
     door_mission: door_mission,
     status:_status,
+    door: code.door_on_notify,
     end:_end
   })
   //Save team record and mission record
