@@ -953,6 +953,60 @@ module.exports = {
      
 
     },
+
+    async gameTest(req, res, next) {
+      console.log(getLogTime()+'gameTest -------------------')
+      let input = checkInput(req, ['room_id','sequence'])
+      
+      if(input === null) {
+        return missParam(res, 'resetStatus', 'miss param')
+      }
+      const redisHandler  = require('../modules/redisHandler')
+      const redisClient = new redisHandler(0)
+
+      try {
+        //Connect redis
+        redisClient.connect()
+        let room_id = input.room_id
+        let sequence = parseInt(input.sequence) 
+        let roomKey = 'room'+room_id
+        let path = roomPath+room_id+'.json'
+        let roomObj = file.getJsonFromFile(path)
+        let missions =  await redisClient.hgetValue(roomKey, 'missions')
+        if(missions !== null) {
+          missions = JSON.parse(missions)
+          for(let i=0;i<missions.length;i++) {
+            let time = new Date().toISOString()
+            let mission = missions[i]
+           
+            //Remove mac data from redis
+            if(mission.sequence === sequence) {
+              let m = {}
+              if(mission.script.pass.includes(':')) {
+                m.pass = '3:03'
+              } else {
+                m.pass = '3'
+              }
+              let passObj = getMqttObject( mission.macAddr, m, time, 1)
+              /*** MQTT node pass ***/
+              sendMqttMessage(socket, passObj, 0)
+              let startObj = getMqttObject( mission.macAddr, code.mission_start_command, time, 1)
+              /*** MQTT node pass ***/
+              sendMqttMessage(socket, startObj, interval)
+            }
+          }
+        }
+        redisClient.quit()
+        console.log(getLogTime()+'gameTest response 200 ')
+        resResources.doSuccess(res, 'Game test start')
+      } catch (error) {
+        redisClient.quit()
+        console.log(getLogTime()+'resetStatus response 500 :'+error.message)
+        resResources.catchError(res, error.message)
+      }
+     
+
+    },
 }
 
 async function switchMode(_room_id, _mode, _token) {
@@ -1090,7 +1144,7 @@ async function switchMode(_room_id, _mode, _token) {
           start: ''
         })
         
-        toLog(4,'Before get missions')
+        //toLog(4,'Before get missions')
         let mList = await dataResources.getMissions(_room_id, null)
         toLog(4,'After get missions :'+mList.length)
         
