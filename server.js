@@ -15,6 +15,7 @@ const bodyParser = require('body-parser')
 const errorhandler = require('errorhandler')
 const debug = true;
 global.debug = debug
+global.test = isTest
 let mqttHandler = require('./modules/mqttHandler')
 const userController = require('./controllers/userController')
 const reportController = require('./controllers/reportController')
@@ -239,22 +240,32 @@ module.exports = async function createServer () {
     });
 
     socket.on('mqtt_command', function (data) {
-      
-      console.log(data);
+      console.log(getLogTime()+'Receive socket topic: mqtt_command');
+      //console.log(data);
       let topic = 'YESIO/DL/'+data.macAddr
-      showLog('## Send mqtt topic :'+topic)
+      console.log(getLogTime()+'Send mqtt topic :'+topic)
       if(data && typeof data === 'object')
         data = JSON.stringify(data)
-      showLog('## Send mqtt message :'+data)
+
+      console.log(getLogTime()+'Send mqtt message :'+JSON.stringify(data))
       mqttClient.sendMessage(topic, data)
     });
 
     socket.on('socket_command', function (data) {
       
-      console.log(data);
+      
+      if(global.debug) {
+        console.log(getLogTime()+'Receive socket topic: socket_command')
+        console.log(data);
+      }
+      
       if(data && typeof data === 'object')
         data = JSON.stringify(data)
-      showLog('## Send socket message :'+data)
+
+      if(global.debug) {
+        showLog('## Send socket message :'+data)
+      }
+      
       socket.broadcast.emit('update_command_status', data)
     });
 
@@ -275,11 +286,11 @@ module.exports = async function createServer () {
     });
 
     socket.on('disconnect', function () {
-      console.log('???? socket disconnect id : ' + socket.id);
+      console.log('### socket disconnect id : ' + socket.id);
     });
   });
 
-  if(debug) {
+  if(isTest) {
     // Initialise the runtime with a server and settings
     RED.init(server,setting);
 
@@ -390,12 +401,13 @@ function decode_base64(str) {
   return buf.toString()
 }
 
+function getLogTime() {
+  return new Date().toISOString()+ ' >>> '
+}
 
 function showLog(message) {
-  if(isTest)
-    //console.log(message + ' >>> '+ new Date().toISOString())
+  if(debug)
     console.log( new Date().toISOString()+ ' >>> '+ message)
-    //file.appendToFile(logPath, message)
 }
 
 function showError(message) {

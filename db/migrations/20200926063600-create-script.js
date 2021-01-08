@@ -24,6 +24,10 @@ module.exports = {
         allowNull: false,
         type: Sequelize.STRING
       },
+      image_url: {
+        allowNull: false,
+        type: Sequelize.STRING
+      },
       prompt1: {
         allowNull: true,
         type: Sequelize.STRING
