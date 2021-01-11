@@ -172,6 +172,9 @@ async function swithObj (topic, msg) {
 //"ulTopic1": "YESIO/UL/+", for escape room
 async function handleUpload1 (mObj) { 
   console.log(getDatestring() +'mqtt_sub_YESIO/UL/+ -------------------')
+  if(!mObj.hasOwnProperty('data')){
+    return
+  }
   let obj = getAdjustObj(mObj);
   let result = null
   //Jason save MQTT to report -------- start
