@@ -57,7 +57,7 @@ module.exports = {
      * @param int room_id
      * @return mission
      */
-    async getDefaultMission(req, res, next) {
+    async getDefaultMission(req, res, next) { 
       console.log(getLogTime()+'getDefaultMission -------------------')
       let input = checkInput(req, ['room_id'])
       
@@ -232,12 +232,15 @@ module.exports = {
         //Jason test bypass
         //let currentSequence = await redisClient.hgetValue(roomKey, 'sequence')
         
-        
+        let mode = await redisClient.hgetValue(roomKey, 'mode')
         let status = await redisClient.hgetValue(roomKey, 'status')
         let door = await redisClient.hgetValue(roomKey, 'door')
-        if(status === code.security_event) {
+        let missions = await redisClient.hgetValue(roomKey, 'missions')
+        mode = mode ? parseInt(mode) : 30;
+        
+        if(mode === code.security_mode_command) {
           redisClient.quit()
-          notAllowed(res, 'setMissionAction', 'Security event')
+          notAllowed(res, 'setMissionAction', 'Security mode')
         }
         let doorMac = await redisClient.hgetValue(roomKey, 'doorMac')
 		    
@@ -295,7 +298,7 @@ module.exports = {
           return notFound(res, 'setMissionAction', 'Not found room')
         }
         //Get missions
-        let mList = await dataResources.getMissions(room_id, null)
+        /*let mList = await dataResources.getMissions(room_id, null)
 		    toLog(4,'get mission :'+mList.length)
         
         if(mList === null || mList.length === 0 ) {
@@ -359,39 +362,51 @@ module.exports = {
             mission.script.pass = changePass[mission.sequence]
           }
 
-          /*if(typeof mission.script.pass === 'string') {
-            mission.script.pass = JSON.parse(mission.script.pass)
-          }*/
+          
           let time = new Date().toISOString()
           let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
-          /*** MQTT pass ***/
+          //MQTT pass 
           sendMqttMessage(socket, passObj, ((i)*interval))
         }
+        */
+        //Save room to redis and file
         //Sende off command via MQTT for Close back boor 
         let sList = await dataResources.getSecurityNode(room_id)
         for(let i=0;i<sList.length;i++) {
           let time = new Date().toISOString()
           let device = sList[i]
           let closeObj = getMqttObject( device.macAddr, code.node_off_command, time, 1)
-          /*** MQTT open game door ***/
+          // MQTT open back door
           sendMqttMessage(socket, closeObj, ((i)*interval))
         }
-        //Save room to redis and file
+        if(missions)
+          missions = JSON.parse(missions)
+        for(let i=0;i<missions.length;i++) {
+          
+          let mission = missions[i]
+          if(mission.sequence ===1) {
+            let startNodeObj = getMqttObject( mission.macAddr, code.mission_start_command, actionTime, 1)
+            sendMqttMessage(socket, startNodeObj, interval)
+            initMacRedis(redisClient,mission.macAddr, room_id, mission.id,mission.sequence, actionTime )
+          } else {
+            initMacRedis(redisClient,mission.macAddr, room_id, mission.id, mission.sequence, null )
+          }
+        }
         saveRoom(redisClient,roomObj,{
           roomId:room_id,
           room:room,
           pass_time: room.pass_time,
           members:members,
-          missions: lists,
           status:code.mission_start,
           sequence:1,
-          macs:macList,
-          count:macList.length,
-          start: actionTime
+          start: actionTime,
+          //missions: lists,
+          //macs:macList,
+          //count:macList.length,
         })
 
         redisClient.quit()
-        let data = {"room":room, "members":members, "missions":lists }
+        let data = {"room":room, "members":members, "missions":missions}
         console.log(getLogTime()+'setMissionAction 200 OK')
         resResources.getDtaSuccess(res, data)
       } catch (error) {
@@ -1047,7 +1062,82 @@ async function  switchMode(_room_id, _mode, _token) {
   
   //Jason add replay command on 2020.12.31
   let actionTime = new Date().toISOString()
+  //Web set standby command
+  if(_mode===code.standby_command){
+    console.log('1. standby_command')
+    //Change door mission and clean status
+    let door_mission = await toGetDefaultMission(_room_id)
+    
+    //Get missions
+    let mList = await dataResources.getMissions(_room_id, null)
+    if(mList)
+      console.log('2. mission:'+mList.length)
+    let scriptGroup = await dataResources.getGroupScript(_room_id)
+    console.log('3. getGroupScript '+Object.keys(scriptGroup).length)
 
+    let defaultIndex = -1
+    for(let i=0;i<mList.length;i++) {
+      //Jason add for clear mac in redis on 2020.11.18
+      redisClient.remove(mList[i]['macAddr'])
+      if(mList[i].sequence ===0){
+        defaultIndex = i
+        continue
+      }
+    }
+
+    let macList = []
+    let inx = 0
+    let lists = JSON.parse(JSON.stringify(mList))
+    let changePass = {}
+    if(defaultIndex > -1) 
+      lists.splice(defaultIndex, 1);
+    console.log('4. save mission redis and random script')
+    for(let i=0;i<lists.length;i++) {
+
+      let mission = lists[i]
+      //Filter emergency mac of room 
+      if(mission.sequence === null || mission.sequence === 0) {//Mission 0 for emergency
+        continue
+      } 
+      macList.splice(inx, 0 , mission.macAddr)
+      inx++
+      
+      mission.script = getScript(scriptGroup[mission.id])
+      if(mission.script.next_pass!==null && mission.script.next_sequence!==null) {
+        changePass[mission.script.next_sequence] = mission.script.next_pass
+        //Jason add relation between pass and next_pass on 2020.10.22
+        mission.script.pass = mission.script.pass + ':' + mission.script.next_pass
+      }
+      if(changePass[mission.sequence]) {
+        mission.script.pass = changePass[mission.sequence]
+      }
+
+      let time = new Date().toISOString()
+      let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
+      /*** MQTT pass ***/
+      sendMqttMessage(socket, passObj, ((i)*interval))
+    }
+
+    saveRoom(redisClient,roomObj,{
+      roomId:_room_id,
+      sequence: 0,
+      status: 0,
+      reduce: 0,
+      prompt: 0,
+      security: 0,
+      team_id: 0,
+      door_mission: door_mission,
+      missions: lists,
+      macs:macList,
+      count:macList.length,
+      start: '',
+      end: ''
+    })
+
+    redisClient.quit()
+    return
+  }
+  //Web set replay command
   if(_mode===code.replay_command){
     let missions =  await redisClient.hgetValue(roomKey, 'missions')
     //Send pass via MQTT
@@ -1724,6 +1814,7 @@ async function switchMqttCmd(obj) {
   }
   let mission = null
   let room_id = 0;
+  //Get room_id
   if(command === code.security_event || command === code.reset_command) {//Security event 7
 
     let device = await dataResources.getSecurityNodeByMac(macAddr)
@@ -1802,7 +1893,7 @@ async function switchMqttCmd(obj) {
     redisClient.quit()
     return
   }
-  
+  //Close door
   if(command === code.door_off_notify) {
     toLog(2, 'door_off_notify')
     
@@ -1811,40 +1902,18 @@ async function switchMqttCmd(obj) {
 
     if(door) door = parseInt(door)
     if(status) status = parseInt(status)
-    if(status === code.emergency_stop || status === code.mission_pass || status === code.mission_fail){
-      //Send close status to web
-      let time = new Date().toISOString()
-      let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
-      sendSocketCmd(socket, closeObj)
+    //關門後自動歸零
+    /*if(status === code.emergency_stop || status === code.mission_pass || status === code.mission_fail){
       setRoomDefault(redisClient, room_id ,macAddr)
       toLog(3, 'Reset status to default')
-    } else if(door === code.door_on_notify) {
-      //表示大門開啟過,然後上報關閉,表示進入可啟動模式 ,若要開啟輔助照明可於此開啟
-      //存到Redis
-      //redisClient.hsetValue(macAddr, 'door', code.door_off_notify)
-
-      saveRoom(redisClient,roomObj,{
-        roomId:room_id,
-        door:code.door_off_notify,
-      })
-        
-      //收到 MQTT時就存到DB
-      
-      //Send close status to web
-      let time = new Date().toISOString()
-      let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
-      sendSocketCmd(socket, closeObj)
-      toLog(3, 'save door status door_off_notify :' + code.door_off_notify)
-    }  else {
-      toLog(3, 'Just show door closed')
-      let time = new Date().toISOString()
-      let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
-      sendSocketCmd(socket, closeObj)
-      saveRoom(redisClient,roomObj,{
-        roomId:room_id,
-        door:code.door_off_notify
-      })
-    }
+    }*/ 
+    let time = new Date().toISOString()
+    let closeObj = getMqttObject( macAddr, code.door_off_notify, time, 1)
+    sendSocketCmd(socket, closeObj)
+    saveRoom(redisClient,roomObj,{
+      roomId:room_id,
+      door:code.door_off_notify
+    })
     redisClient.quit()
   } else if(command === code.mission_end) {//2 mission end
     toLog(2, 'mission_end_command')
@@ -1866,13 +1935,8 @@ async function switchMqttCmd(obj) {
     }
     saveRoom(redisClient,roomObj,tmp)
     
-    //Save node status 2 to DB
+    
     let cmdObj = getMqttObject( macAddr, code.mission_end, end, 1)
-    //Jason bypass for MQTT sub has save report on 2020.10.23
-    /*toLog(4,'Before save report')
-    let result = await dataResources.saveReport(cmdObj)
-    toLog(4,'After save report')*/
-    //Send socket to web (status = 2)
     sendSocketCmd(socket, cmdObj)
     
     if(count && count === sequence) {//最後一關 ,做停止流程
@@ -1984,12 +2048,9 @@ async function toStopMssion(_client, _roomId, _status, _end) {
   toLog(4,'save redis mac :'+ mac+', end:'+_end)
   let test = await _client.hsetValue(mac, 'end', _end)
   
-  //Change door mission,status, end
-  let door_mission = await toGetDefaultMission(_roomId)
-  //_client.hsetValue(roomKey, 'door_mission', JSON.stringify(door_mission))
+  //Change status, end time,door open
   saveRoom(_client,roomObj,{
     roomId:_roomId,
-    door_mission: door_mission,
     status:_status,
     door: code.door_on_notify,
     end:_end
@@ -2003,7 +2064,7 @@ async function toStopMssion(_client, _roomId, _status, _end) {
     toLog(6,'Before save record')
     
 
-    //Save mission report
+    //Save 1
     for(let n=0;n<macs.length;n++) {
       if((n+1)<currentSequence) {
         let result = await saveRecord(_client, _roomId, macs[n], team_record_id,null)
