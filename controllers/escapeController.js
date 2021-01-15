@@ -368,7 +368,7 @@ module.exports = {
           //MQTT pass 
           sendMqttMessage(socket, passObj, ((i)*interval))
         }
-        */
+        
         //Save room to redis and file
         //Sende off command via MQTT for Close back boor 
         let sList = await dataResources.getSecurityNode(room_id)
@@ -378,7 +378,7 @@ module.exports = {
           let closeObj = getMqttObject( device.macAddr, code.node_off_command, time, 1)
           // MQTT open back door
           sendMqttMessage(socket, closeObj, ((i)*interval))
-        }
+        }*/
         if(missions)
           missions = JSON.parse(missions)
         for(let i=0;i<missions.length;i++) {
