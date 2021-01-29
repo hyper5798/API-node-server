@@ -1612,7 +1612,7 @@ function getMqttObject( _mac, _command, _time,_count,_script) {
   if(typeof _command === 'object') {
     //return {"macAddr":_mac,"pass":_command.value,"recv":_time,"fport":99,"frameCnt":_count}
     return {"macAddr":_mac,"pass":_command.pass,"recv":_time,"fport":99}
-  } else if(_script !== null){
+  } else if(_script !== undefined && _script !== null){
     //return {"macAddr":_mac,"data":{"key1":_command},"recv":_time,"fport":99,"frameCnt":_count}
     return {"macAddr":_mac,data:{"key1":93, "script":_script},"recv":_time,"fport":99}
   } else {
