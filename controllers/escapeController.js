@@ -110,7 +110,12 @@ module.exports = {
         let macAddr = input.macAddr
         let command = parseInt(input.command)
         //console.log('mac:'+macAddr+', command:'+command)
-        
+        let script = null;
+        if(command === code.set_controller_command) {
+          script = req.body['script'] || req.query['script']
+          script = JSON.parse(script)
+        }
+
         if(macAddr === 'default') {
           toLog('2','command: default')
           let roomKey = 'room'+room_id
@@ -195,7 +200,9 @@ module.exports = {
         console.log(getLogTime()+'sendMqtt mac: '+ macAddr+ ',command:'+command)
         
         //Send MQTT command to node
-        let cmdObj = getMqttObject( macAddr, command, receiveTime, 1)
+  
+        let cmdObj = getMqttObject( macAddr, command, receiveTime, 1, script)
+        
         sendMqttMessage(socket, cmdObj)//To server.js mqtt client send message
         
 		    console.log(getLogTime()+'sendMqttCmd response 200')
@@ -1601,13 +1608,17 @@ function sendMqttCmd(_socket, msg_obj) {
   _socket.emit('mqtt_command', msg_obj)
 }
 
-function getMqttObject( _mac, _command, _time, _count) {
-  if(typeof _command === 'object')
+function getMqttObject( _mac, _command, _time,_count,_script) {
+  if(typeof _command === 'object') {
     //return {"macAddr":_mac,"pass":_command.value,"recv":_time,"fport":99,"frameCnt":_count}
     return {"macAddr":_mac,"pass":_command.pass,"recv":_time,"fport":99}
-  else  
+  } else if(_script !== null){
+    //return {"macAddr":_mac,"data":{"key1":_command},"recv":_time,"fport":99,"frameCnt":_count}
+    return {"macAddr":_mac,data:{"key1":93, "script":_script},"recv":_time,"fport":99}
+  } else {
     //return {"macAddr":_mac,"data":{"key1":_command},"recv":_time,"fport":99,"frameCnt":_count}
     return {"macAddr":_mac,"data":{"key1":_command},"recv":_time,"fport":99}
+  }
 }
 
 function notFound(_res, _target, _msg) {

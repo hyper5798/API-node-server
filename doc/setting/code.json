@@ -20,5 +20,7 @@
     "standby_command": 28,
     "game_mode_command": 30,
     "demo_mode_command": 31,
-    "security_mode_command": 32
+    "security_mode_command": 32,
+    "set_password_command": 92,
+    "set_controller_command": 93
 }
