@@ -1131,10 +1131,6 @@ async function  switchMode(_room_id, _mode, _token) {
       }
     }
 
-    let mac = list[0].macAddr
-    let startNodeObj = getMqttObject( mac, code.mission_start_command, actionTime, 1)
-    sendMqttMessage(socket, startNodeObj, 2*interval)
-
     saveRoom(redisClient,roomObj,{
       roomId:_room_id,
       sequence: 0,
