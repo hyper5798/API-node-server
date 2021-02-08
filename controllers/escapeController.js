@@ -1018,9 +1018,10 @@ module.exports = {
               } else {
                 m.pass = '3'
               }
-              let passObj = getMqttObject( mission.macAddr, m, time, 1)
+              //Bypass send pass command
+              //let passObj = getMqttObject( mission.macAddr, m, time, 1)
               /*** MQTT node pass ***/
-              sendMqttMessage(socket, passObj, 0)
+              //sendMqttMessage(socket, passObj, 0)
               let startObj = getMqttObject( mission.macAddr, code.mission_start_command, time, 1)
               /*** MQTT node pass ***/
               sendMqttMessage(socket, startObj, 2*interval)
