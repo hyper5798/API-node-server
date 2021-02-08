@@ -102,6 +102,7 @@ module.exports = {
       const redisHandler  = require('../modules/redisHandler')
       const redisClient = new redisHandler(0)
 
+
       try {
         redisClient.connect()
         let receiveTime = new Date().toISOString()
@@ -202,7 +203,6 @@ module.exports = {
         //Send MQTT command to node
   
         let cmdObj = getMqttObject( macAddr, command, receiveTime, 1, script)
-        
         sendMqttMessage(socket, cmdObj)//To server.js mqtt client send message
         
 		    console.log(getLogTime()+'sendMqttCmd response 200')
@@ -1023,7 +1023,7 @@ module.exports = {
               sendMqttMessage(socket, passObj, 0)
               let startObj = getMqttObject( mission.macAddr, code.mission_start_command, time, 1)
               /*** MQTT node pass ***/
-              sendMqttMessage(socket, startObj, interval)
+              sendMqttMessage(socket, startObj, 2*interval)
             }
           }
         }
@@ -1123,7 +1123,16 @@ async function  switchMode(_room_id, _mode, _token) {
       let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
       /*** MQTT pass ***/
       sendMqttMessage(socket, passObj, ((i)*interval))
+
+      if(mission.sequence === 1) {
+        let startNodeObj = getMqttObject( mission.macAddr, code.mission_start_command, time, 1)
+        sendMqttMessage(socket, startNodeObj, 2*interval)
+      }
     }
+
+    let mac = list[0].macAddr
+    let startNodeObj = getMqttObject( mac, code.mission_start_command, actionTime, 1)
+    sendMqttMessage(socket, startNodeObj, 2*interval)
 
     saveRoom(redisClient,roomObj,{
       roomId:_room_id,
