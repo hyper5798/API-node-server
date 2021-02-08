@@ -2051,14 +2051,14 @@ async function toStopMssion(_client, _roomId, _status, _end) {
     return Promise.resolve(false)
   }
  
-  //Open door (21)
-  if(_status === code.mission_pass || _status === code.mission_fail) {
+  //Bypass Open door (21)
+  /*if(_status === code.mission_pass || _status === code.mission_fail) {
     toLog('', '@@ mqtt open door')
     let openTime = new Date().toISOString()
     let doorObj = getMqttObject( doorMac, code.node_on_command, openTime, 1)
     let mytest = await _client.remove(doorMac)
     sendMqttMessage(socket, doorObj, 0)
-  }
+  }*/
 
   //setMissionEnd update status,end time ------------------------------
   let mac = macs[(currentSequence-1)]
