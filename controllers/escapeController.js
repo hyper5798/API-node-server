@@ -1124,11 +1124,11 @@ async function  switchMode(_room_id, _mode, _token) {
       let passObj = getMqttObject( mission.macAddr, mission.script, time, 1)
       /*** MQTT pass ***/
       sendMqttMessage(socket, passObj, ((i)*interval))
-
-      if(mission.sequence === 1) {
+      //Jason bypass mission_start_command on 2021.3.5
+      /*if(mission.sequence === 1) {
         let startNodeObj = getMqttObject( mission.macAddr, code.mission_start_command, time, 1)
         sendMqttMessage(socket, startNodeObj, 2*interval)
-      }
+      }*/
     }
 
     saveRoom(redisClient,roomObj,{
