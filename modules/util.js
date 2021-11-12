@@ -42,8 +42,8 @@ async function init() {
         let mac = products[i].macAddr
         let key = 'products';
         let time = new Date(products[i].created_at).toISOString()
-        if(debug)
-            console.log('mac'+mac+' -> '+ time)
+        /*if(debug)
+            console.log('mac'+mac+' -> '+ time)*/
 
         redisClient.hsetValue(key, mac, time);
     }

@@ -4,7 +4,7 @@
 /*!
  * Module dependencies
  */
-const isTest = true
+const isTest = false
 const express = require('express')
 const responseTime = require('response-time')
 const responsePoweredBy = require('response-powered-by')
@@ -244,8 +244,14 @@ module.exports = async function createServer () {
       //console.log(data);
       let topic = 'YESIO/DL/'+data.macAddr
       console.log(getLogTime()+'Send mqtt topic :'+topic)
-      if(data && typeof data === 'object')
+      if(data && typeof data === 'object') {
+        if(data.hasOwnProperty('ul')) {
+          topic = 'YESIO/UL/'+data.macAddr
+          delete data.ul
+        }
         data = JSON.stringify(data)
+      }
+        
 
       console.log(getLogTime()+'Send mqtt message :'+JSON.stringify(data))
       mqttClient.sendMessage(topic, data)
