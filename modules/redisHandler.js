@@ -7,7 +7,8 @@ Promise.promisifyAll(Redis.Multi.prototype)
 let options = {
   "host": 'localhost' ,
   "port": 16379,
-  "db": 0
+  "db": 0,
+  "auth_pass": "yesio12345"
 };
 
 class redisHandler {
