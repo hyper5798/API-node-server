@@ -43,10 +43,10 @@ socket.on('update_mqtt_ul',function(data){
 socket.on('change_mode',function(data){
 
   console.log('escapeController change_mode :'+ data.mode);
-  if( (data.token === undefined || data.token === null) ) {
+  /*if( (data.token === undefined || data.token === null) ) {
     if(!global.test)
       return
-  }
+  }*/
   switchMode(data.room_id, data.mode, data.token)
 });
 
