@@ -211,7 +211,10 @@ module.exports = async function createServer () {
     })
   })*/
   //Socket.io ------------------------------------------------------- start
-  var io = require('socket.io').listen(server);
+  var io = require('socket.io').listen(server, {
+    allowEIO3: true,
+  })
+  
 
   io.sockets.on('connection', function (socket) {
     // mySocket = socket;
