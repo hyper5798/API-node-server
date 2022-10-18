@@ -2,6 +2,6 @@
     "secret": "iotsecret",
     "token_expired": 24,
     "laravel_prifix": "laravel_database_",
-    "port": 8060,
+    "port": 8080,
     "mongodb_api": "http://localhost:1337"
 }
