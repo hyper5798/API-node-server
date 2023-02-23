@@ -69,7 +69,7 @@
     "lib/"
   ],
   "devDependencies": {
-    "sequelize": "^5.21.7",
+    "sequelize": "^6.28.2",
     "sequelize-cli": "^5.5.1"
   }
 }
